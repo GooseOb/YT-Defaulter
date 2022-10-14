@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YT default speed x2
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      0.1.1
+// @version      0.1.2
 // @description  Хуткасьць x2 па дэфолту на ютубе
 // @author       GooseOb
 // @match        https://www.youtube.com/*
@@ -9,6 +9,10 @@
 // ==/UserScript==
 
 (function() {
+    const SPEED = 'Хуткасць прайгравання';
+    const SPEED_DEFAULT = 'Звычайны';
+    const QUALITY = 'Якасць';
+
 	const elements = {
 		settingsBtns: document.getElementsByClassName('ytp-settings-button'),
 		menus: document.getElementsByClassName('ytp-settings-menu')
@@ -44,14 +48,14 @@
 	let isX2 = false;
 
 	const quality = [
-		'Якасць',
+		QUALITY,
 		{max: 1080}
 	];
 	const speed = () => {
-		const speedValue = isX2 ? 'Звычайны' : '2';
+		const speedValue = isX2 ? SPEED_DEFAULT : '2';
 		isX2 = !isX2;
 		return [
-			'Хуткасць прайгравання',
+			SPEED,
 			speedValue
 		];
 	};
