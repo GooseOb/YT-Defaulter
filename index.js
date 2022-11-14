@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1
+// @version      1.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @match        https://www.youtube.com/*
@@ -49,12 +49,11 @@ function debounce(callback, cooldown) {
 	};
 };
 
-const channelId = {
-	value: null,
-	update() {
-		this.value = document.querySelector('meta[itemprop="channelId"]').content;
-	}
-};
+let channelId = null;
+let channelName = null;
+
+const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
+
 const
 	GLOBAL = 'global',
 	LOCAL = 'this channel',
@@ -85,12 +84,19 @@ const valueProps = {
 	[SUBTITLES]: 'checked' // input-checkbox
 };
 const onPageChange = () => {setTimeout(() => {
-	if (window.location.pathname !== '/watch') return;
-	channelId.update();
+	if (location.pathname !== '/watch') return;
 
 	/* ---------------------- apply settings ---------------------- */
 
-	const channelCfg = cfg.channels[channelId.value] ||= {};
+	if (!channelName) {
+		channelName = getChannelName();
+		const i_channelName = setInterval(() => {
+			if (channelName) clearInterval(i_channelName);
+			channelName = getChannelName();
+		}, 10);
+	};
+
+	const channelCfg = cfg.channels[channelId] ||= {};
 	const ytp = document.getElementById('movie_player');
 	ytMenu = Object.assign(ytp.querySelector('.ytp-settings-menu'), {
 		btn: ytp.querySelector('.ytp-settings-button'),
@@ -113,7 +119,7 @@ const onPageChange = () => {setTimeout(() => {
 		[SPEED]: addValueSetter(menuItemArr[0], setValue),
 		[SUBTITLES]: areSubtitles && addValueSetter(
 			ytp.querySelector('.ytp-subtitles-button')
-		, setSubtitlesValue)
+			, setSubtitlesValue)
 	};
 	if (!SPEED_NORMAL) {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
@@ -133,19 +139,26 @@ const onPageChange = () => {setTimeout(() => {
 
 	/* ---------------------- settings menu ---------------------- */
 
+	const existingContainer = document.getElementById(PREFIX + 'cont');
+	if (existingContainer) {
+		setTimeout(() => {
+			existingContainer.style.visibility =
+				channelName === getChannelName() ? 'visible' : 'hidden';
+		}, 100);
+		return;
+	};
+
 	const
 		div = props => el('div', props),
 		input = props => el('input', props),
 		checkbox = props => input(Object.assign({type: 'checkbox'}, props)),
 		btnClass = 'yt-spec-button-shape-next',
-		focused = (elem, className) => Object.assign(elem, {
-			onfocus() {this.classList.add(className + '--focused')},
-			onblur() {this.classList.remove(className + '--focused')}
-		}),
-		button = (text, props) => focused(el('button', Object.assign({
+		button = (text, props) => el('button', Object.assign({
 			textContent: text,
-			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`
-		}, props)), btnClass);
+			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
+			onfocus() {this.classList.add(btnClass + '--focused')},
+			onblur() {this.classList.remove(btnClass + '--focused')}
+		}, props));
 	const container = div({id: PREFIX + 'cont'});
 	container.style.position = 'relative';
 	const menu = div({
@@ -262,22 +275,26 @@ const onPageChange = () => {setTimeout(() => {
 	btn.classList.add(btnClass + '--icon-button');
 	btn.append(svg);
 	container.append(btn);
-	const interval = setInterval(() => {
+	const i_Button = setInterval(() => {
 		const root = document.getElementById('actions')?.querySelector('ytd-menu-renderer');
 		if (!root) return;
 		root.insertBefore(container, root.lastChild);
 		menu.style.top = (btn.offsetHeight + 10) + 'px';
 		container.append(menu);
-		clearInterval(interval);
+		clearInterval(i_Button);
 	}, 100);
 }, 300)};
 
 onPageChange();
 
-let lastHistoryState = history.state;
+let {
+	pathname: lastPathname,
+	search: lastParams
+} = location;
 setInterval(() => {
-	if (history.state === lastHistoryState) return;
-	lastHistoryState = history.state;
+	if (lastPathname === location.pathname && (lastPathname !== '/watch' || lastParams === location.search)) return;
+	lastPathname = location.pathname;
+	lastParams = location.search;
 	onPageChange();
 }, 1000);
 
@@ -311,40 +328,40 @@ const
 	underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
 
 document.head.append(el('style', {
-textContent:`
+	textContent:`
 #${PREFIX}cont {color: var(--yt-spec-text-primary); font-size: 14px}
 #${PREFIX}btn {margin-left: 8px}
 ${m} {
-	display: flex;
-	visibility: hidden;
-	flex-direction: column;
-	position: absolute;
-	right: 0;
-	background: ${bg};
-	border-radius: 2rem;
-	padding: 1rem;
-	text-align: center;
-	box-shadow: 0px 4px 32px 0px var(--yt-spec-static-overlay-background-light);
-	z-index: 2202;
+display: flex;
+visibility: hidden;
+flex-direction: column;
+position: absolute;
+right: 0;
+background: ${bg};
+border-radius: 2rem;
+padding: 1rem;
+text-align: center;
+box-shadow: 0px 4px 32px 0px var(--yt-spec-static-overlay-background-light);
+z-index: 2202;
 }
 ${m+d} {display: flex; margin-bottom: 1rem}
 ${m+d+d} {
-	flex-direction: column;
-	margin: 0 1rem;
+flex-direction: column;
+margin: 0 1rem;
 }
 ${m+d+d+d} {
-	flex-direction: row;
-	margin: 1rem 0;
+flex-direction: row;
+margin: 1rem 0;
 }
 ${m+s}, ${m+i} {
-	text-align: center;
-	background: ${bg};
-	border: none;
-	${underline}
-	color: inherit;
-	width: 5rem;
-	padding: 0;
-	margin-left: auto;
+text-align: center;
+background: ${bg};
+border: none;
+${underline}
+color: inherit;
+width: 5rem;
+padding: 0;
+margin-left: auto;
 }
 ${m+i} {outline: none}
 ${m+d+d+d}:focus-within > label, .${PREFIX}check-cont:focus-within > label {${underline}}
