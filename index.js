@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.1
+// @version      1.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
+// @license      MIT
 // @match        https://www.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==
@@ -13,6 +14,10 @@ const
 	STORAGE_NAME = 'YTDefaulter',
 	STORAGE_VERSION = 1,
 	PREFIX = 'YTDef-',
+	CONT_ID = PREFIX + 'cont',
+	MENU_ID = PREFIX + 'menu',
+	BTN_ID = PREFIX + 'btn',
+	CHECKBOX_CONT_CLASS = PREFIX + 'check-cont',
 	SUBTITLES = 'subtitles',
 	SPEED = 'speed',
 	QUALITY = 'qualityMax';
@@ -119,7 +124,7 @@ const onPageChange = () => {setTimeout(() => {
 		[SPEED]: addValueSetter(menuItemArr[0], setValue),
 		[SUBTITLES]: areSubtitles && addValueSetter(
 			ytp.querySelector('.ytp-subtitles-button')
-			, setSubtitlesValue)
+		, setSubtitlesValue)
 	};
 	if (!SPEED_NORMAL) {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
@@ -139,7 +144,7 @@ const onPageChange = () => {setTimeout(() => {
 
 	/* ---------------------- settings menu ---------------------- */
 
-	const existingContainer = document.getElementById(PREFIX + 'cont');
+	const existingContainer = document.getElementById(CONT_ID);
 	if (existingContainer) {
 		setTimeout(() => {
 			existingContainer.style.visibility =
@@ -159,10 +164,10 @@ const onPageChange = () => {setTimeout(() => {
 			onfocus() {this.classList.add(btnClass + '--focused')},
 			onblur() {this.classList.remove(btnClass + '--focused')}
 		}, props));
-	const container = div({id: PREFIX + 'cont'});
+	const container = div({id: CONT_ID});
 	container.style.position = 'relative';
 	const menu = div({
-		id: PREFIX + 'menu',
+		id: MENU_ID,
 		isOpen: false,
 		closeListener(e) {
 			const el = e.target;
@@ -209,8 +214,8 @@ const onPageChange = () => {setTimeout(() => {
 			return {elem, item};
 		};
 
-		const options = ['default', '2', '1.75', '1.5', '1.25', '0.75', '0.5', '0.25']
-			.map((value, i) => el('option', {
+		const options = ['default', '2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25']
+			.map(value => el('option', {
 				value,
 				textContent: value
 			}));
@@ -231,7 +236,7 @@ const onPageChange = () => {setTimeout(() => {
 		createSection(LOCAL, channelCfg)
 	);
 	const getCheckboxDiv = (id, cfgName, text) => {
-		const cont = div({className: PREFIX + 'check-cont'});
+		const cont = div({className: CHECKBOX_CONT_CLASS});
 		id = PREFIX + id;
 		cont.append(
 			el('label', {textContent: text, for: id}),
@@ -267,11 +272,12 @@ const onPageChange = () => {setTimeout(() => {
 	}).forEach(([key, value]) => {svg.setAttribute(key, value)})
 	svg.append(document.getElementById('settings'));
 	const btn = button('', {
-		id: PREFIX + 'btn',
+		id: BTN_ID,
 		ariaLabel: 'open additional settings',
 		tabIndex: 0,
 		onclick(e) {menu.toggle(e)}
 	});
+	btn.setAttribute('aria-controls', MENU_ID);
 	btn.classList.add(btnClass + '--icon-button');
 	btn.append(svg);
 	container.append(btn);
@@ -312,10 +318,12 @@ document.addEventListener('click', onClick, {capture: true});
 document.addEventListener('keyup', e => {
 	if (e.code === 'Enter') return onClick(e);
 	if (!e.ctrlKey || e.code !== 'Space') return;
+	const channelCfg = cfg.channels[channelId];
+	const getCfgValue = key => channelCfg?.[key] || cfg.global[key];
 	if (e.shiftKey) {
-		ytSettingItems[QUALITY].setValue(cfg.global[QUALITY]);
+		ytSettingItems[QUALITY].setValue(getCfgValue(QUALITY));
 	} else {
-		ytSettingItems[SPEED].setValue(isSpeedChanged ? SPEED_NORMAL : cfg.global[SPEED]);
+		ytSettingItems[SPEED].setValue(isSpeedChanged ? SPEED_NORMAL : getCfgValue(SPEED));
 		isSpeedChanged = !isSpeedChanged;
 	};
 	e.stopPropagation();
@@ -323,14 +331,13 @@ document.addEventListener('keyup', e => {
 });
 
 const
-	m = '#' + PREFIX + 'menu',
+	m = '#' + MENU_ID,
 	d = ' div', i = ' input', s = ' select', bg = 'var(--yt-spec-menu-background)',
 	underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
 
-document.head.append(el('style', {
-	textContent:`
-#${PREFIX}cont {color: var(--yt-spec-text-primary); font-size: 14px}
-#${PREFIX}btn {margin-left: 8px}
+document.head.append(el('style', {textContent:`
+#${CONT_ID} {color: var(--yt-spec-text-primary); font-size: 14px}
+#${BTN_ID} {margin-left: 8px}
 ${m} {
 display: flex;
 visibility: hidden;
@@ -364,8 +371,8 @@ padding: 0;
 margin-left: auto;
 }
 ${m+i} {outline: none}
-${m+d+d+d}:focus-within > label, .${PREFIX}check-cont:focus-within > label {${underline}}
-.${PREFIX}check-cont {padding: 0 1rem}
+${m+d+d+d}:focus-within > label, .${CHECKBOX_CONT_CLASS}:focus-within > label {${underline}}
+.${CHECKBOX_CONT_CLASS} {padding: 0 1rem}
 ${m+s} {appearance: none; outline: none}
 ${m} label {margin-right: 1.5rem}
 ${m+i}::-webkit-outer-spin-button,
