@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.3
+// @version      1.3.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -67,7 +67,7 @@ function debounce(callback, delay) {
 		clearTimeout(timeout);
 		timeout = setTimeout(() => {
 			callback.apply(this, args);
-		}, cooldown);
+		}, delay);
 	};
 };
 
