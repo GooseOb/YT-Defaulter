@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.2
+// @version      1.3
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -12,22 +12,24 @@
 (function() {
 const
 	STORAGE_NAME = 'YTDefaulter',
-	STORAGE_VERSION = 1,
+	STORAGE_VERSION = 2,
 	PREFIX = 'YTDef-',
 	CONT_ID = PREFIX + 'cont',
 	MENU_ID = PREFIX + 'menu',
 	BTN_ID = PREFIX + 'btn',
-	CHECKBOX_CONT_CLASS = PREFIX + 'check-cont',
 	SUBTITLES = 'subtitles',
 	SPEED = 'speed',
 	QUALITY = 'qualityMax';
 let cfg = localStorage[STORAGE_NAME];
 cfg = cfg ? JSON.parse(cfg) : {
 	_v: STORAGE_VERSION,
-	shortsToUsual: false,
-	newTab: false,
 	global: {},
-	channels: {}
+	channels: {},
+	flags: {
+		shortsToUsual: false,
+		newTab: false,
+		copySubs: false
+	}
 };
 const copyObj = obj => Object.assign({}, obj);
 const saveCfg = () => {
@@ -44,7 +46,22 @@ const saveCfg = () => {
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
 
-function debounce(callback, cooldown) {
+if (cfg._v !== STORAGE_VERSION)  {
+	switch (cfg._v) {
+		case 1:
+			const {shortsToUsual, newTab} = cfg;
+			cfg.flags = {
+				shortsToUsual, newTab,
+				copySubs: false
+			};
+			delete cfg.shortsToUsual;
+			delete cfg.newTab;
+			cfg._v = 2;
+	};
+	saveCfg();
+};
+
+function debounce(callback, delay) {
 	let timeout;
 	return function(...args) {
 		clearTimeout(timeout);
@@ -52,6 +69,15 @@ function debounce(callback, cooldown) {
 			callback.apply(this, args);
 		}, cooldown);
 	};
+};
+
+const onAppear = (getItem, callback) => {
+	const interval = setInterval(() => {
+		const item = getItem();
+		if (!item) return;
+		clearInterval(interval);
+		callback(item);
+	}, 10);
 };
 
 let channelId = null;
@@ -93,13 +119,9 @@ const onPageChange = () => {setTimeout(() => {
 
 	/* ---------------------- apply settings ---------------------- */
 
-	if (!channelName) {
-		channelName = getChannelName();
-		const i_channelName = setInterval(() => {
-			if (channelName) clearInterval(i_channelName);
-			channelName = getChannelName();
-		}, 10);
-	};
+	if (!channelName) onAppear(getChannelName, name => {
+		channelName = name;
+	});
 
 	const channelCfg = cfg.channels[channelId] ||= {};
 	const ytp = document.getElementById('movie_player');
@@ -124,7 +146,7 @@ const onPageChange = () => {setTimeout(() => {
 		[SPEED]: addValueSetter(menuItemArr[0], setValue),
 		[SUBTITLES]: areSubtitles && addValueSetter(
 			ytp.querySelector('.ytp-subtitles-button')
-		, setSubtitlesValue)
+			, setSubtitlesValue)
 	};
 	if (!SPEED_NORMAL) {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
@@ -147,8 +169,8 @@ const onPageChange = () => {setTimeout(() => {
 	const existingContainer = document.getElementById(CONT_ID);
 	if (existingContainer) {
 		setTimeout(() => {
-			existingContainer.style.visibility =
-				channelName === getChannelName() ? 'visible' : 'hidden';
+			existingContainer.style.display =
+				channelName === getChannelName() ? 'block' : 'none';
 		}, 100);
 		return;
 	};
@@ -157,6 +179,11 @@ const onPageChange = () => {setTimeout(() => {
 		div = props => el('div', props),
 		input = props => el('input', props),
 		checkbox = props => input(Object.assign({type: 'checkbox'}, props)),
+		labelEl = (forId, props) => {
+			const elem = el('label', props);
+			elem.setAttribute('for', forId);
+			return elem;
+		},
 		btnClass = 'yt-spec-button-shape-next',
 		button = (text, props) => el('button', Object.assign({
 			textContent: text,
@@ -176,11 +203,15 @@ const onPageChange = () => {setTimeout(() => {
 		},
 		removeCloseListener() {document.removeEventListener('click', this.closeListener)},
 		toggle(e) {
-			this.style.visibility = this.isOpen ? 'hidden' : 'visible';
+			if (this.isOpen) {
+				this.style.visibility = 'hidden';
+				this.removeCloseListener();
+			} else {
+				this.style.visibility = 'visible';
+				document.addEventListener('click', this.closeListener);
+				e.stopPropagation();
+			};
 			this.isOpen = !this.isOpen;
-			if (!this.isOpen) return this.removeCloseListener();
-			document.addEventListener('click', this.closeListener);
-			e.stopPropagation();
 		}
 	});
 	const getChangeHandler = (cfg, key) => function() {
@@ -195,10 +226,9 @@ const onPageChange = () => {setTimeout(() => {
 		section.setAttribute('aria-labelledby', sectionLabel);
 		const addItem = (label, elem) => {
 			const item = div();
-			const id = PREFIX + label;
-			const labelEl = el('label', {
+			const id = PREFIX + label + '_' + sectionLabel;
+			const labelElem = labelEl(id, {
 				textContent: label[0].toUpperCase() + label.slice(1),
-				for: id
 			});
 			Object.assign(elem, {
 				id,
@@ -209,9 +239,9 @@ const onPageChange = () => {setTimeout(() => {
 			if (cfgValue) setTimeout(() => {
 				elem[valueProps[label]] = cfgValue;
 			});
-			item.append(labelEl, elem);
+			item.append(labelElem, elem);
 			section.append(item);
-			return {elem, item};
+			return {elem};
 		};
 
 		const options = ['default', '2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25']
@@ -225,30 +255,34 @@ const onPageChange = () => {setTimeout(() => {
 		addItem(SPEED, el('select'))
 			.elem.append(...options);
 		addItem(QUALITY, input({type: 'number', min: '144'}));
-		addItem(SUBTITLES, checkbox())
-			.item.className = 'cont-checkbox';
+		addItem(SUBTITLES, checkbox());
 		return section;
 	};
 
-	const sections = div();
+	const sections = div({className: PREFIX + 'sections'});
 	sections.append(
 		createSection(GLOBAL, cfg.global),
 		createSection(LOCAL, channelCfg)
 	);
-	const getCheckboxDiv = (id, cfgName, text) => {
-		const cont = div({className: CHECKBOX_CONT_CLASS});
+	const checkboxDiv = (id, cfgName, text) => {
+		const cont = div({className: 'check-cont'});
 		id = PREFIX + id;
 		cont.append(
-			el('label', {textContent: text, for: id}),
-			checkbox({id, checked: cfg[cfgName], onclick() {cfg[cfgName] = this.checked}})
+			labelEl(id, {textContent: text}),
+			checkbox({
+				id,
+				checked: cfg.flags[cfgName],
+				onclick() {cfg.flags[cfgName] = this.checked}
+			})
 		);
 		return cont;
 	};
 
 	menu.append(
 		sections,
-		getCheckboxDiv('shorts', 'shortsToUsual', 'Open shorts as a usual video'),
-		getCheckboxDiv('new-tab', 'newTab', 'Open videos in a new tab'),
+		checkboxDiv('shorts', 'shortsToUsual', 'Open shorts as a usual video'),
+		checkboxDiv('new-tab', 'newTab', 'Open videos in a new tab'),
+		checkboxDiv('copy-subs', 'copySubs', 'Copy subtitles by Ctrl+C in fullscreen mode'),
 		button('Save', {
 			setTextDefer: debounce(function(text) {this.textContent = text}, 1000),
 			onclick() {
@@ -281,14 +315,15 @@ const onPageChange = () => {setTimeout(() => {
 	btn.classList.add(btnClass + '--icon-button');
 	btn.append(svg);
 	container.append(btn);
-	const i_Button = setInterval(() => {
-		const root = document.getElementById('actions')?.querySelector('ytd-menu-renderer');
-		if (!root) return;
-		root.insertBefore(container, root.lastChild);
-		menu.style.top = (btn.offsetHeight + 10) + 'px';
-		container.append(menu);
-		clearInterval(i_Button);
-	}, 100);
+	const getActionsBar = () =>
+		document.getElementById('actions')?.querySelector('ytd-menu-renderer');
+	onAppear(getActionsBar,
+		bar => {;
+			bar.insertBefore(container, bar.lastChild);
+			menu.style.top = (btn.offsetHeight + 10) + 'px';
+			container.append(menu);
+		}
+	);
 }, 300)};
 
 onPageChange();
@@ -305,18 +340,29 @@ setInterval(() => {
 }, 1000);
 
 const onClick = e => {
-	if (!cfg.shortsToUsual && !cfg.newTab) return;
+	const {shortsToUsual, newTab} = cfg.flags;
+	if (!shortsToUsual && !newTab) return;
 	let el = e.target;
 	if (el.tagName !== 'A') el = el.closest('a');
 	if (!el || !/shorts\/|watch\?v=/.test(el.href)) return;
-	if (cfg.shortsToUsual) el.href = el.href.replace('shorts/', 'watch?v=');
-	if (cfg.newTab) el.target = '_blank';
-	e.stopPropagation();
+	if (shortsToUsual) el.href = el.href.replace('shorts/', 'watch?v=');
+	if (newTab) {
+		el.target = '_blank';
+		e.stopPropagation();
+	};
 };
 
 document.addEventListener('click', onClick, {capture: true});
 document.addEventListener('keyup', e => {
 	if (e.code === 'Enter') return onClick(e);
+	if (cfg.flags.copySubs && e.ctrlKey && e.code === 'KeyC') {
+		const plr = document.querySelector('.html5-video-player');
+		if (!plr || plr.ariaLabel !== 'YouTube Video Player in Fullscreen') return;
+		const lines = Array.from(plr.querySelectorAll('.captions-text > span'));
+		const result = lines.map(line => line.textContent).join(' ');
+		navigator.clipboard.writeText(result);
+		return;
+	};
 	if (!e.ctrlKey || e.code !== 'Space') return;
 	const channelCfg = cfg.channels[channelId];
 	const getCfgValue = key => channelCfg?.[key] || cfg.global[key];
@@ -354,7 +400,7 @@ z-index: 2202;
 ${m+d} {display: flex; margin-bottom: 1rem}
 ${m+d+d} {
 flex-direction: column;
-margin: 0 1rem;
+margin: 0 2rem;
 }
 ${m+d+d+d} {
 flex-direction: row;
@@ -371,13 +417,12 @@ padding: 0;
 margin-left: auto;
 }
 ${m+i} {outline: none}
-${m+d+d+d}:focus-within > label, .${CHECKBOX_CONT_CLASS}:focus-within > label {${underline}}
-.${CHECKBOX_CONT_CLASS} {padding: 0 1rem}
+${m+d+d+d}:focus-within > label, ${m} .check-cont:focus-within > label {${underline}}
+${m} .check-cont {padding: 0 1rem}
 ${m+s} {appearance: none; outline: none}
-${m} label {margin-right: 1.5rem}
+${m} label {margin-right: 1.5rem; white-space: nowrap}
 ${m+i}::-webkit-outer-spin-button,
 ${m+i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m+i}[type=number] {-moz-appearance: textfield}
-${m+s}::-ms-expand {display: none}`
-}));
+${m+s}::-ms-expand {display: none}`}));
 })();
