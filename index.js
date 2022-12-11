@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.3.1
+// @version      1.3.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -71,19 +71,19 @@ function debounce(callback, delay) {
 	};
 };
 
-const onAppear = (getItem, callback) => {
+const untilAppear = getItem => new Promise(resolve => {
 	const interval = setInterval(() => {
 		const item = getItem();
 		if (!item) return;
 		clearInterval(interval);
-		callback(item);
+		resolve(item);
 	}, 10);
-};
+});
 
-let channelId = null;
-let channelName = null;
+let channelId, channelName;
 
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
+const getChannelId = () => document.querySelector('meta[itemprop="channelId"]')?.content;
 
 const
 	GLOBAL = 'global',
@@ -114,14 +114,14 @@ const valueProps = {
 	[QUALITY]: 'value', // input
 	[SUBTITLES]: 'checked' // input-checkbox
 };
-const onPageChange = () => {setTimeout(() => {
+const onPageChange = () => {setTimeout(async () => {
 	if (location.pathname !== '/watch') return;
 
 	/* ---------------------- apply settings ---------------------- */
 
-	if (!channelName) onAppear(getChannelName, name => {
-		channelName = name;
-	});
+	if (!channelName) untilAppear(getChannelName)
+		.then(name => {channelName = name});
+	channelId ||= await untilAppear(getChannelId);
 
 	const channelCfg = cfg.channels[channelId] ||= {};
 	const ytp = document.getElementById('movie_player');
@@ -168,10 +168,9 @@ const onPageChange = () => {setTimeout(() => {
 
 	const existingContainer = document.getElementById(CONT_ID);
 	if (existingContainer) {
-		setTimeout(() => {
-			existingContainer.style.display =
-				channelName === getChannelName() ? 'block' : 'none';
-		}, 100);
+		untilAppear(getChannelName).then(name => {
+			existingContainer.style.display = channelName === name ? 'block' : 'none';
+		});
 		return;
 	};
 
@@ -317,13 +316,10 @@ const onPageChange = () => {setTimeout(() => {
 	container.append(btn);
 	const getActionsBar = () =>
 		document.getElementById('actions')?.querySelector('ytd-menu-renderer');
-	onAppear(getActionsBar,
-		bar => {;
-			bar.insertBefore(container, bar.lastChild);
-			menu.style.top = (btn.offsetHeight + 10) + 'px';
-			container.append(menu);
-		}
-	);
+	const actionsBar = await untilAppear(getActionsBar);
+	actionsBar.insertBefore(container, actionsBar.lastChild);
+	menu.style.top = (btn.offsetHeight + 10) + 'px';
+	container.append(menu);
 }, 300)};
 
 onPageChange();
