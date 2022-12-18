@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.4
+// @version      1.4.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -31,7 +31,7 @@ const text = {
 	SHORTS: 'Open shorts as a usual video',
 	NEW_TAB: 'Open videos in a new tab',
 	COPY_SUBS: 'Copy subtitles by Ctrl+C in fullscreen mode',
-	STANDARD_MUSIC_SPEED: 'Don\'t change speed on music channels',
+	STANDARD_MUSIC_SPEED: 'Don\'t change speed on artist channels',
 	SAVE: 'Save',
 	SAVED: 'Saved',
 	DEFAULT: 'default'
@@ -46,7 +46,7 @@ switch (document.documentElement.lang) {
 		SHORTS: 'Адкрываць shorts як звычайныя',
 		NEW_TAB: 'Адкрываць відэа ў новай картцы',
 		COPY_SUBS: 'Капіяваць субтытры у поўнаэкранным, Ctrl+C',
-		STANDARD_MUSIC_SPEED: 'Не мяняць хуткасьць на музычных каналах',
+		STANDARD_MUSIC_SPEED: 'Не мяняць хуткасьць на каналах музыкаў',
 		SAVE: 'Захаваць',
 		SAVED: 'Захавана',
 		DEFAULT: '-'
