@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.4.1
+// @version      1.4.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -36,8 +36,8 @@ const text = {
 	SAVED: 'Saved',
 	DEFAULT: 'default'
 };
-switch (document.documentElement.lang) {
-	case 'be-BY': Object.assign(text, {
+const translations = {
+	'be-BY': {
 		SUBTITLES: 'Субтытры',
 		SPEED: 'Хуткасьць',
 		QUALITY: 'МаксЯкасьць',
@@ -45,13 +45,14 @@ switch (document.documentElement.lang) {
 		LOCAL: 'гэты канал',
 		SHORTS: 'Адкрываць shorts як звычайныя',
 		NEW_TAB: 'Адкрываць відэа ў новай картцы',
-		COPY_SUBS: 'Капіяваць субтытры у поўнаэкранным, Ctrl+C',
+		COPY_SUBS: 'Капіяваць субтытры ў поўнаэкранным, Ctrl+C',
 		STANDARD_MUSIC_SPEED: 'Не мяняць хуткасьць на каналах музыкаў',
 		SAVE: 'Захаваць',
 		SAVED: 'Захавана',
 		DEFAULT: '-'
-	});
+	}
 };
+Object.assign(text, translations[document.documentElement.lang]);
 
 let cfg = localStorage[STORAGE_NAME];
 cfg = cfg ? JSON.parse(cfg) : {
@@ -108,12 +109,14 @@ function debounce(callback, delay) {
 	};
 };
 
-const until = (getItem, check) => new Promise(resolve => {
+const until = (getItem, check) => new Promise((res, rej) => {
+	let i = 0;
 	const interval = setInterval(() => {
+		if (i++ > 1000) rej();
 		const item = getItem();
 		if (!check(item)) return;
 		clearInterval(interval);
-		resolve(item);
+		res(item);
 	}, 10);
 });
 
@@ -122,7 +125,13 @@ const untilAppear = getItem => until(getItem, Boolean);
 let channelId, channelName;
 
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
-const getChannelId = () => document.querySelector('meta[itemprop="channelId"]')?.content;
+const validateChannelId = id => id?.includes('/') ? null : id;
+const getChannelId = () => validateChannelId(
+	document.querySelector('meta[itemprop="channelId"]')
+		?.content ||
+	document.querySelector('.ytp-ce-channel-title.ytp-ce-link')
+		?.pathname.replace('/channel/', '')
+);
 
 const getPlr = () => document.getElementById('movie_player');
 const getAboveTheFold = () => document.getElementById('above-the-fold');
@@ -164,13 +173,14 @@ const valueProps = {
 const PAGE_CHECK_TIMEOUT = 1000;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const onPageChange = async () => {
-	await sleep(PAGE_CHECK_TIMEOUT);
 	if (location.pathname !== '/watch') return;
+	await sleep(PAGE_CHECK_TIMEOUT);
+	console.log('start');
 
 	/* ---------------------- apply settings ---------------------- */
 
 	if (!channelName) untilAppear(getChannelName)
-		.then(name => {channelName = name});
+		.then(name => {channelName = name; console.log('name');});
 	channelId ||= await untilAppear(getChannelId);
 
 	const plr = await untilAppear(getPlr);
@@ -223,7 +233,7 @@ const onPageChange = async () => {
 	if (!areSubtitles) delete settings[SUBTITLES];
 	for (const setting in settings)
 		ytSettingItems[setting].setValue(settings[setting]);
-	if (settings[SPEED]) isSpeedChanged = true;
+	if (settings[SPEED] !== SPEED_NORMAL) isSpeedChanged = true;
 
 	/* ---------------------- settings menu ---------------------- */
 
@@ -382,14 +392,10 @@ const onPageChange = async () => {
 
 onPageChange();
 
-let {
-	pathname: lastPathname,
-	search: lastParams
-} = location;
+let lastHref;
 setInterval(() => {
-	if (lastPathname === location.pathname && (lastPathname !== '/watch' || lastParams === location.search)) return;
-	lastPathname = location.pathname;
-	lastParams = location.search;
+	if (lastHref === location.href) return;
+	lastHref = location.href;
 	onPageChange();
 }, PAGE_CHECK_TIMEOUT);
 
