@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.4.2
+// @version      1.4.3
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -34,7 +34,7 @@ const text = {
 	STANDARD_MUSIC_SPEED: 'Don\'t change speed on artist channels',
 	SAVE: 'Save',
 	SAVED: 'Saved',
-	DEFAULT: 'default'
+	DEFAULT: '-'
 };
 const translations = {
 	'be-BY': {
@@ -69,14 +69,14 @@ cfg = cfg ? JSON.parse(cfg) : {
 const copyObj = obj => Object.assign({}, obj);
 const saveCfg = () => {
 	const cfgCopy = copyObj(cfg);
-	const channelCfgCopy = copyObj(cfg.channels);
-	for (const key in channelCfgCopy) {
-		const channelCfg = channelCfgCopy[key];
+	const channelsCfgCopy = copyObj(cfg.channels);
+	for (const key in channelsCfgCopy) {
+		const channelCfg = channelsCfgCopy[key];
 		const {length} = Object.keys(channelCfg);
 		if (!length || (length === 1 && channelCfg.subtitles === false))
-			delete channelCfgCopy[key];
+			delete channelsCfgCopy[key];
 	};
-	cfgCopy.channels = channelCfgCopy;
+	cfgCopy.channels = channelsCfgCopy;
 
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
@@ -122,7 +122,8 @@ const until = (getItem, check) => new Promise((res, rej) => {
 
 const untilAppear = getItem => until(getItem, Boolean);
 
-let channelId, channelName;
+let channelCfg, channelName;
+let isTheSameChannel = true;
 
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
 const validateChannelId = id => id?.includes('/') ? null : id;
@@ -144,23 +145,29 @@ const isMusicChannel = async () => {
 };
 
 const
-	addValueSetter = (el, fn) => Object.assign(el, {setValue: fn}),
+	addValueSetter = (el, setValue) => Object.assign(el, {setValue}),
 	el = (tag, props) => Object.assign(document.createElement(tag), props);
-let ytMenu, ytSettingItems, SPEED_NORMAL;
+let ytMenu, ytSettingItems, SPEED_NORMAL, menuCont;
 let isSpeedChanged = false;
-function setValue(value) {
+const comparators = {
+	[QUALITY]: (value, current) => value >= parseInt(current),
+	default: (value, current) => value === current
+};
+function setValue(value, setting) {
 	const btns = ytMenu.openItem(this).reverse();
-	const check = this === ytSettingItems[QUALITY]
-		? content => parseInt(content) <= value
-		: content => content === value;
+	const compare = comparators[setting] || comparators.default;
 
 	while (btns.length) {
 		const btn = btns.pop();
-		if (!check(btn.textContent)) continue;
+		if (!compare(value, btn.textContent)) continue;
 		btn.click();
 		break;
 	};
 	ytMenu.close();
+}
+function setSpeedValue(value, setting) {
+	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value, setting]);
+	isSpeedChanged = !isSpeedChanged;
 }
 function setSubtitlesValue(value) {
 	if (this.ariaPressed !== value.toString()) this.click();
@@ -175,26 +182,30 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
 	await sleep(PAGE_CHECK_TIMEOUT);
-	console.log('start');
 
 	/* ---------------------- apply settings ---------------------- */
 
-	if (!channelName) untilAppear(getChannelName)
-		.then(name => {channelName = name; console.log('name');});
-	channelId ||= await untilAppear(getChannelId);
+	untilAppear(getChannelName).then(name => {
+		if (menuCont) {
+			isTheSameChannel = channelName === name;
+			menuCont.style.display = isTheSameChannel ? 'block' : 'none';
+		} else channelName = name;
+	});
+	if (!channelCfg) {
+		const channelId = await untilAppear(getChannelId);
+		channelCfg = cfg.channels[channelId] ||= {};
+	};
 
 	const plr = await untilAppear(getPlr);
 	await sleep(1000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd()) await until(getAd, ad => !ad);
-
-	const channelCfg = cfg.channels[channelId] ||= {};
 	const ytp = document.getElementById('movie_player');
 	ytMenu = Object.assign(ytp.querySelector('.ytp-settings-menu'), {
-		btn: ytp.querySelector('.ytp-settings-button'),
+		_btn: ytp.querySelector('.ytp-settings-button'),
 		isOpen() {return this.style.display !== 'none'},
-		open()  {this.isOpen() || this.btn.click()},
-		close() {this.isOpen() && this.btn.click()},
+		open()  {this.isOpen() || this._btn.click()},
+		close() {this.isOpen() && this._btn.click()},
 		openItem(item) {
 			this.open();
 			item.click();
@@ -208,11 +219,11 @@ const onPageChange = async () => {
 	const areSubtitles = menuItemArr.length === 3;
 	ytSettingItems = {
 		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue),
-		[SPEED]: addValueSetter(menuItemArr[0], setValue),
-		[SUBTITLES]: areSubtitles && addValueSetter(
-			ytp.querySelector('.ytp-subtitles-button'), setSubtitlesValue
-		)
+		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue)
 	};
+	if (areSubtitles) ytSettingItems[SUBTITLES] = addValueSetter(
+		ytp.querySelector('.ytp-subtitles-button'), setSubtitlesValue
+	);
 	if (!SPEED_NORMAL) {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
 		while (labels.length) {
@@ -223,27 +234,18 @@ const onPageChange = async () => {
 		};
 		ytMenu.close();
 	};
-	const settings = Object.assign(
-		{},
+	const doNotChangeSpeed = cfg.global.speed && cfg.flags.standardMusicSpeed && (await isMusicChannel());
+	const settings = Object.assign({},
 		cfg.global,
-		cfg.flags.standardMusicSpeed && (await isMusicChannel()) &&
-			{[SPEED]: SPEED_NORMAL},
-		channelCfg
+		doNotChangeSpeed && {[SPEED]: SPEED_NORMAL},
+		isTheSameChannel && channelCfg
 	);
-	if (!areSubtitles) delete settings[SUBTITLES];
 	for (const setting in settings)
-		ytSettingItems[setting].setValue(settings[setting]);
-	if (settings[SPEED] !== SPEED_NORMAL) isSpeedChanged = true;
+		ytSettingItems[setting].setValue(settings[setting], setting);
 
 	/* ---------------------- settings menu ---------------------- */
 
-	const existingContainer = document.getElementById(CONT_ID);
-	if (existingContainer) {
-		untilAppear(getChannelName).then(name => {
-			existingContainer.style.display = channelName === name ? 'block' : 'none';
-		});
-		return;
-	};
+	if (menuCont) return;
 
 	const
 		div = props => el('div', props),
@@ -261,8 +263,8 @@ const onPageChange = async () => {
 			onfocus() {this.classList.add(btnClass + '--focused')},
 			onblur() {this.classList.remove(btnClass + '--focused')}
 		}, props));
-	const container = div({id: CONT_ID});
-	container.style.position = 'relative';
+	menuCont = div({id: CONT_ID});
+	menuCont.style.position = 'relative';
 	const menu = div({
 		id: MENU_ID,
 		isOpen: false,
@@ -383,14 +385,12 @@ const onPageChange = async () => {
 	btn.setAttribute('aria-controls', MENU_ID);
 	btn.classList.add(btnClass + '--icon-button');
 	btn.append(settingsIcon);
-	container.append(btn);
+	menuCont.append(btn);
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(container, actionsBar.lastChild);
+	actionsBar.insertBefore(menuCont, actionsBar.lastChild);
 	menu.style.top = (btn.offsetHeight + 10) + 'px';
-	container.append(menu);
+	menuCont.append(menu);
 };
-
-onPageChange();
 
 let lastHref;
 setInterval(() => {
@@ -403,8 +403,11 @@ const onClick = e => {
 	const {shortsToUsual, newTab} = cfg.flags;
 	if (!shortsToUsual && !newTab) return;
 	let el = e.target;
-	if (el.tagName !== 'A') el = el.closest('a');
-	if (!el || !/shorts\/|watch\?v=/.test(el.href)) return;
+	if (el.tagName !== 'A') {
+		el = el.closest('a');
+		if (!el) return;
+	};
+	if (!/shorts\/|watch\?v=/.test(el.href)) return;
 	if (shortsToUsual) el.href = el.href.replace('shorts/', 'watch?v=');
 	if (newTab) {
 		el.target = '_blank';
@@ -412,26 +415,25 @@ const onClick = e => {
 	};
 };
 
+const getCfgValue = key =>
+	(isTheSameChannel && channelCfg?.[key]) || cfg.global[key];
+
 document.addEventListener('click', onClick, {capture: true});
 document.addEventListener('keyup', e => {
 	if (e.code === 'Enter') return onClick(e);
-	if (cfg.flags.copySubs && e.ctrlKey && e.code === 'KeyC') {
+	if (!e.ctrlKey) return;
+	if (cfg.flags.copySubs && e.code === 'KeyC') {
 		const plr = document.querySelector('.html5-video-player');
-		if (!plr || plr.ariaLabel !== 'YouTube Video Player in Fullscreen') return;
-		const lines = Array.from(plr.querySelectorAll('.captions-text > span'));
-		const result = lines.map(line => line.textContent).join(' ');
-		navigator.clipboard.writeText(result);
+		if (!plr?.classList.contains('ytp-fullscreen')) return;
+		const text = Array.from(
+			plr.querySelectorAll('.captions-text > span')
+		).map(line => line.textContent).join(' ');
+		navigator.clipboard.writeText(text);
 		return;
 	};
-	if (!e.ctrlKey || e.code !== 'Space') return;
-	const channelCfg = cfg.channels[channelId];
-	const getCfgValue = key => channelCfg?.[key] || cfg.global[key];
-	if (e.shiftKey) {
-		ytSettingItems[QUALITY].setValue(getCfgValue(QUALITY));
-	} else {
-		ytSettingItems[SPEED].setValue(isSpeedChanged ? SPEED_NORMAL : getCfgValue(SPEED));
-		isSpeedChanged = !isSpeedChanged;
-	};
+	if (e.code !== 'Space') return;
+	const setting = e.shiftKey ? QUALITY : SPEED;
+	ytSettingItems[setting].setValue(getCfgValue(setting));
 	e.stopPropagation();
 	e.preventDefault();
 });
