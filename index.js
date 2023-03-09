@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.4.4
+// @version      1.5.0
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -95,9 +95,9 @@ if (cfg._v !== STORAGE_VERSION)  {
 		case 2:
 			cfg.flags.standardMusicSpeed = false;
 			cfg._v = 3;
-	};
+	}
 	saveCfg();
-};
+}
 
 function debounce(callback, delay) {
 	let timeout;
@@ -107,7 +107,7 @@ function debounce(callback, delay) {
 			callback.apply(this, args);
 		}, delay);
 	};
-};
+}
 
 const until = (getItem, check) => new Promise((res, rej) => {
 	let i = 0;
@@ -139,10 +139,9 @@ const getAboveTheFold = () => document.getElementById('above-the-fold');
 const getActionsBar = () =>
 	document.getElementById('actions')?.querySelector('ytd-menu-renderer');
 
-const isMusicChannel = async () => {
-	const el = await untilAppear(getAboveTheFold);
-	return !!el.querySelector('.badge-style-type-verified-artist');
-};
+const isMusicChannel = () => untilAppear(getAboveTheFold).then(
+	el => !!el.querySelector('.badge-style-type-verified-artist')
+);
 
 const
 	addValueSetter = (el, setValue) => Object.assign(el, {setValue}),
@@ -162,7 +161,7 @@ function setValue(value, setting) {
 		if (!compare(value, btn.textContent)) continue;
 		btn.click();
 		break;
-	};
+	}
 	ytMenu.close();
 }
 function setSpeedValue(value, setting) {
@@ -194,7 +193,7 @@ const onPageChange = async () => {
 	if (!channelCfg) {
 		const channelId = await untilAppear(getChannelId);
 		channelCfg = cfg.channels[channelId] ||= {};
-	};
+	}
 
 	const plr = await untilAppear(getPlr);
 	await sleep(1000);
@@ -231,9 +230,9 @@ const onPageChange = async () => {
 			if (+label) continue;
 			SPEED_NORMAL = label;
 			break;
-		};
+		}
 		ytMenu.close();
-	};
+	}
 	const doNotChangeSpeed = cfg.global.speed && cfg.flags.standardMusicSpeed && (await isMusicChannel());
 	const settings = Object.assign({},
 		cfg.global,
@@ -284,7 +283,7 @@ const onPageChange = async () => {
 			} else {
 				this.style.visibility = 'visible';
 				this.closeListener.add();
-			};
+			}
 			this.isOpen = !this.isOpen;
 		}, 100)
 	});
@@ -314,17 +313,28 @@ const onPageChange = async () => {
 			return {elem};
 		};
 
-		const options = [text.DEFAULT, '2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25']
-			.map(value => el('option', {
-				value,
-				textContent: value
+		const toOptions = (arr, getText) => {
+			arr.unshift(el('option', {
+				value: text.DEFAULT,
+				textContent: text.DEFAULT,
+				checked: true
 			}));
-		options[0].checked = true;
+			for (let i = 1; i < arr.length; i++)
+				arr[i] = el('option', {
+					value: arr[i],
+					textContent: getText(arr[i])
+				});
+			return arr;
+		};
+		const speedValues = ['2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25'];
+		const qualityValues = ['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'];
+
+		const addSelectItem = (name, text, options, getText) =>
+			addItem(name, text, el('select')).elem.append(...toOptions(options, getText));
 
 		section.append(el('span', {textContent: title, id: sectionId}));
-		addItem(SPEED, text.SPEED, el('select'))
-			.elem.append(...options);
-		addItem(QUALITY, text.QUALITY, input({type: 'number', min: '144'}));
+		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
+		addSelectItem(QUALITY, text.QUALITY, qualityValues, val => val + 'p');
 		addItem(SUBTITLES, text.SUBTITLES, checkbox());
 		return section;
 	};
@@ -413,7 +423,7 @@ const onClick = e => {
 	if (newTab) {
 		el.target = '_blank';
 		e.stopPropagation();
-	};
+	}
 };
 
 const getCfgValue = key =>
@@ -431,7 +441,7 @@ document.addEventListener('keyup', e => {
 		).map(line => line.textContent).join(' ');
 		navigator.clipboard.writeText(text);
 		return;
-	};
+	}
 	if (e.code !== 'Space') return;
 	const setting = e.shiftKey ? QUALITY : SPEED;
 	ytSettingItems[setting].setValue(getCfgValue(setting));
