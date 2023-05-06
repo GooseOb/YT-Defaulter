@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.1
+// @version      1.5.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -139,21 +139,11 @@ let channelCfg, channelName;
 let isTheSameChannel = true;
 
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
-const validateChannelId = id => id?.includes('/') ? null : id;
-const getChannelId = () => validateChannelId(
-	document.querySelector('meta[itemprop="channelId"]')
-		?.content
-	|| document.querySelector('.ytp-ce-channel-title.ytp-ce-link')
-		?.pathname.replace('/channel/', '')
-	|| document.querySelector('a#author-text')
-		?.href.replace(/.*\/channel\//, '')
-);
-const getChannelUrlName = () => document.querySelector('link[itemprop="url"]')
+const getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')
 	?.href.replace(/.*\/@/, '');
 
-const untilChannelIdAppear = () => untilAppear(getChannelId, 1_000)
-	.catch(() => untilAppear(getChannelUrlName))
-	.catch(() => '');
+const untilChannelUsernameAppear = () =>
+	untilAppear(getChannelUsername, 10_000).catch(() => '');
 
 const $ = id => document.getElementById(id);
 
@@ -213,8 +203,8 @@ const onPageChange = async () => {
 		} else channelName = name;
 	});
 	if (!channelCfg) {
-		const channelId = await untilChannelIdAppear();
-		channelCfg = cfg.channels[channelId] ||= {};
+		const channelUsername = await untilChannelUsernameAppear();
+		channelCfg = cfg.channels[channelUsername] ||= {};
 	}
 
 	const plr = await untilAppear(getPlr);
