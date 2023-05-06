@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.0
+// @version      1.5.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -25,7 +25,7 @@ const
 const text = {
 	SUBTITLES: 'Subtitles',
 	SPEED: 'Speed',
-	QUALITY: 'MaxQuality',
+	QUALITY: 'Quality',
 	GLOBAL: 'global',
 	LOCAL: 'this channel',
 	SHORTS: 'Open shorts as a usual video',
@@ -40,7 +40,7 @@ const translations = {
 	'be-BY': {
 		SUBTITLES: 'Субтытры',
 		SPEED: 'Хуткасьць',
-		QUALITY: 'МаксЯкасьць',
+		QUALITY: 'Якасьць',
 		GLOBAL: 'глябальна',
 		LOCAL: 'гэты канал',
 		SHORTS: 'Адкрываць shorts як звычайныя',
@@ -52,7 +52,10 @@ const translations = {
 		DEFAULT: '-'
 	}
 };
-Object.assign(text, translations[document.documentElement.lang]);
+Object.assign(text, translations[document.documentElement.lang] || (() => {
+	for (const lang of navigator.languages)
+		if (lang in translations) return translations[lang];
+})());
 
 let cfg = localStorage[STORAGE_NAME];
 cfg = cfg ? JSON.parse(cfg) : {
@@ -75,7 +78,7 @@ const saveCfg = () => {
 		const {length} = Object.keys(channelCfg);
 		if (!length || (length === 1 && channelCfg.subtitles === false))
 			delete channelsCfgCopy[key];
-	};
+	}
 	cfgCopy.channels = channelsCfgCopy;
 
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
@@ -109,18 +112,28 @@ function debounce(callback, delay) {
 	};
 }
 
-const until = (getItem, check) => new Promise((res, rej) => {
+const until = (
+	getItem,
+	check,
+	msToWait = 10_000,
+	msReqDelay = 20
+) => new Promise((res, rej) => {
+	const reqLimit = msToWait / msReqDelay;
 	let i = 0;
 	const interval = setInterval(() => {
-		if (i++ > 1000) rej();
+		if (i++ > reqLimit) exit(rej);
 		const item = getItem();
 		if (!check(item)) return;
+		exit(() => res(item));
+	}, msReqDelay);
+	const exit = cb => {
 		clearInterval(interval);
-		res(item);
-	}, 10);
+		cb();
+	};
 });
 
-const untilAppear = getItem => until(getItem, Boolean);
+const untilAppear = (getItem, msToWait) =>
+	until(getItem, Boolean, msToWait);
 
 let channelCfg, channelName;
 let isTheSameChannel = true;
@@ -129,15 +142,25 @@ const getChannelName = () => new URLSearchParams(location.search).get('ab_channe
 const validateChannelId = id => id?.includes('/') ? null : id;
 const getChannelId = () => validateChannelId(
 	document.querySelector('meta[itemprop="channelId"]')
-		?.content ||
-	document.querySelector('.ytp-ce-channel-title.ytp-ce-link')
+		?.content
+	|| document.querySelector('.ytp-ce-channel-title.ytp-ce-link')
 		?.pathname.replace('/channel/', '')
+	|| document.querySelector('a#author-text')
+		?.href.replace(/.*\/channel\//, '')
 );
+const getChannelUrlName = () => document.querySelector('link[itemprop="url"]')
+	?.href.replace(/.*\/@/, '');
 
-const getPlr = () => document.getElementById('movie_player');
-const getAboveTheFold = () => document.getElementById('above-the-fold');
+const untilChannelIdAppear = () => untilAppear(getChannelId, 1_000)
+	.catch(() => untilAppear(getChannelUrlName))
+	.catch(() => '');
+
+const $ = id => document.getElementById(id);
+
+const getPlr = () => $('movie_player');
+const getAboveTheFold = () => $('above-the-fold');
 const getActionsBar = () =>
-	document.getElementById('actions')?.querySelector('ytd-menu-renderer');
+	$('actions')?.querySelector('ytd-menu-renderer');
 
 const isMusicChannel = () => untilAppear(getAboveTheFold).then(
 	el => !!el.querySelector('.badge-style-type-verified-artist')
@@ -153,15 +176,14 @@ const comparators = {
 	default: (value, current) => value === current
 };
 function setValue(value, setting) {
-	const btns = ytMenu.openItem(this).reverse();
 	const compare = comparators[setting] || comparators.default;
 
-	while (btns.length) {
-		const btn = btns.pop();
-		if (!compare(value, btn.textContent)) continue;
-		btn.click();
-		break;
-	}
+	for (const btn of ytMenu.openItem(this))
+		if (compare(value, btn.textContent)) {
+			btn.click();
+			break;
+		}
+
 	ytMenu.close();
 }
 function setSpeedValue(value, setting) {
@@ -191,7 +213,7 @@ const onPageChange = async () => {
 		} else channelName = name;
 	});
 	if (!channelCfg) {
-		const channelId = await untilAppear(getChannelId);
+		const channelId = await untilChannelIdAppear();
 		channelCfg = cfg.channels[channelId] ||= {};
 	}
 
@@ -199,9 +221,8 @@ const onPageChange = async () => {
 	await sleep(1000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd()) await until(getAd, ad => !ad);
-	const ytp = document.getElementById('movie_player');
-	ytMenu = Object.assign(ytp.querySelector('.ytp-settings-menu'), {
-		_btn: ytp.querySelector('.ytp-settings-button'),
+	ytMenu = Object.assign(plr.querySelector('.ytp-settings-menu'), {
+		_btn: plr.querySelector('.ytp-settings-button'),
 		isOpen() {return this.style.display !== 'none'},
 		open()  {this.isOpen() || this._btn.click()},
 		close() {this.isOpen() && this._btn.click()},
@@ -221,15 +242,16 @@ const onPageChange = async () => {
 		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue)
 	};
 	if (areSubtitles) ytSettingItems[SUBTITLES] = addValueSetter(
-		ytp.querySelector('.ytp-subtitles-button'), setSubtitlesValue
+		plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue
 	);
 	if (!SPEED_NORMAL) {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
-		while (labels.length) {
-			const label = labels.pop().textContent;
-			if (+label) continue;
-			SPEED_NORMAL = label;
-			break;
+		for (const label of labels) {
+			const text = label.textContent;
+			if (!+text) {
+				SPEED_NORMAL = text;
+				break;
+			}
 		}
 		ytMenu.close();
 	}
@@ -313,18 +335,18 @@ const onPageChange = async () => {
 			return {elem};
 		};
 
-		const toOptions = (arr, getText) => {
-			arr.unshift(el('option', {
+		const toOptions = (values, getText) => {
+			values.unshift(el('option', {
 				value: text.DEFAULT,
 				textContent: text.DEFAULT,
 				checked: true
 			}));
-			for (let i = 1; i < arr.length; i++)
-				arr[i] = el('option', {
-					value: arr[i],
-					textContent: getText(arr[i])
+			for (let i = 1; i < values.length; i++)
+				values[i] = el('option', {
+					value: values[i],
+					textContent: getText(values[i])
 				});
-			return arr;
+			return values;
 		};
 		const speedValues = ['2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25'];
 		const qualityValues = ['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'];
@@ -386,7 +408,7 @@ const onPageChange = async () => {
 		fill: 'var(--yt-spec-text-primary)'
 	};
 	for (const key in iconStyle) settingsIcon.setAttribute(key, iconStyle[key]);
-	settingsIcon.append(document.getElementById('settings'));
+	settingsIcon.append($('settings'));
 	const btn = button('', {
 		id: BTN_ID,
 		ariaLabel: 'open additional settings',
@@ -417,7 +439,7 @@ const onClick = e => {
 	if (el.tagName !== 'A') {
 		el = el.closest('a');
 		if (!el) return;
-	};
+	}
 	if (!/shorts\/|watch\?v=/.test(el.href)) return;
 	if (shortsToUsual) el.href = el.href.replace('shorts/', 'watch?v=');
 	if (newTab) {
