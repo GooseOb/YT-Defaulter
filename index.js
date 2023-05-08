@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.3
+// @version      1.5.4
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -52,10 +52,7 @@ const translations = {
 		DEFAULT: '-'
 	}
 };
-Object.assign(text, translations[document.documentElement.lang] || (() => {
-	for (const lang of navigator.languages)
-		if (lang in translations) return translations[lang];
-})());
+Object.assign(text, translations[document.documentElement.lang]);
 
 let cfg = localStorage[STORAGE_NAME];
 cfg = cfg ? JSON.parse(cfg) : {
