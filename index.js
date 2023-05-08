@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.2
+// @version      1.5.3
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -111,6 +111,11 @@ function debounce(callback, delay) {
 		}, delay);
 	};
 }
+const restoreFocusAfter = cb => {
+	const {activeElement} = document;
+	cb();
+	activeElement.focus();
+};
 
 const until = (
 	getItem,
@@ -189,7 +194,7 @@ const valueProps = {
 	[SUBTITLES]: 'checked' // input-checkbox
 };
 const PAGE_CHECK_TIMEOUT = 1000;
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = ms => new Promise(res => setTimeout(res, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
 	await sleep(PAGE_CHECK_TIMEOUT);
@@ -222,8 +227,10 @@ const onPageChange = async () => {
 			return Array.from(this.querySelectorAll('.ytp-panel-animate-forward .ytp-menuitem-label'));
 		}
 	});
-	ytMenu.open();
-	ytMenu.close();
+	restoreFocusAfter(() => {
+		ytMenu.open();
+		ytMenu.close();
+	});
 	const getMenuItems = () => ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]');
 	const menuItemArr = Array.from(await until(getMenuItems, arr => arr.length));
 	const areSubtitles = menuItemArr.length === 3;
@@ -234,7 +241,7 @@ const onPageChange = async () => {
 	if (areSubtitles) ytSettingItems[SUBTITLES] = addValueSetter(
 		plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue
 	);
-	if (!SPEED_NORMAL) {
+	if (!SPEED_NORMAL) restoreFocusAfter(() => {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
 		for (const label of labels) {
 			const text = label.textContent;
@@ -244,7 +251,7 @@ const onPageChange = async () => {
 			}
 		}
 		ytMenu.close();
-	}
+	});
 	const doNotChangeSpeed = cfg.global.speed && cfg.flags.standardMusicSpeed && (await isMusicChannel());
 	const settings = Object.assign({},
 		cfg.global,
@@ -252,8 +259,10 @@ const onPageChange = async () => {
 		isTheSameChannel && channelCfg
 	);
 	isSpeedChanged = false;
-	for (const setting in settings)
-		ytSettingItems[setting].setValue(settings[setting], setting);
+	restoreFocusAfter(() => {
+		for (const setting in settings)
+			ytSettingItems[setting].setValue(settings[setting], setting);
+	});
 
 	/* ---------------------- settings menu ---------------------- */
 
@@ -456,7 +465,9 @@ document.addEventListener('keyup', e => {
 	}
 	if (e.code !== 'Space') return;
 	const setting = e.shiftKey ? QUALITY : SPEED;
-	ytSettingItems[setting].setValue(getCfgValue(setting));
+	restoreFocusAfter(() => {
+		ytSettingItems[setting].setValue(getCfgValue(setting));
+	});
 	e.stopPropagation();
 	e.preventDefault();
 });
