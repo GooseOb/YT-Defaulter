@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.4.1
+// @version      1.5.5
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -10,8 +10,9 @@
 // ==/UserScript==
 
 (function () {
-const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 3, PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'qualityMax', GLOBAL = 'global', LOCAL = 'thisChannel';
+const PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'quality';
 const text = {
+	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
 	SPEED: 'Speed',
 	QUALITY: 'Quality',
@@ -27,6 +28,7 @@ const text = {
 };
 const translations = {
 	'be-BY': {
+		OPEN_SETTINGS: 'Адкрыць дадатковыя налады',
 		SUBTITLES: 'Субтытры',
 		SPEED: 'Хуткасьць',
 		QUALITY: 'Якасьць',
@@ -42,9 +44,9 @@ const translations = {
 	}
 };
 Object.assign(text, translations[document.documentElement.lang]);
-let cfg = localStorage[STORAGE_NAME];
-cfg = cfg ? JSON.parse(cfg) : {
-	_v: STORAGE_VERSION,
+const cfgLocalStorage = localStorage["YTDefaulter"];
+const cfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
+	_v: 4,
 	global: {},
 	channels: {},
 	flags: {
@@ -65,9 +67,9 @@ const saveCfg = () => {
 			delete channelsCfgCopy[key];
 	}
 	cfgCopy.channels = channelsCfgCopy;
-	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
+	localStorage["YTDefaulter"] = JSON.stringify(cfgCopy);
 };
-if (cfg._v !== STORAGE_VERSION) {
+if (cfg._v !== 4) {
 	switch (cfg._v) {
 		case 1:
 			const { shortsToUsual, newTab } = cfg;
@@ -81,6 +83,15 @@ if (cfg._v !== STORAGE_VERSION) {
 		case 2:
 			cfg.flags.standardMusicSpeed = false;
 			cfg._v = 3;
+		case 3:
+			cfg.global.quality = cfg.global.qualityMax;
+			delete cfg.global.qualityMax;
+			for (const key in cfg.channels) {
+				const currCfg = cfg.channels[key];
+				currCfg.quality = currCfg.qualityMax;
+				delete currCfg.qualityMax;
+			}
+			cfg._v = 4;
 	}
 	saveCfg();
 }
@@ -98,7 +109,7 @@ const restoreFocusAfter = (cb) => {
 	cb();
 	el.focus();
 };
-const until = (getItem, check, msToWait = 200000, msReqDelay = 20) => new Promise((res, rej) => {
+const until = (getItem, check, msToWait = 10000, msReqDelay = 20) => new Promise((res, rej) => {
 	const reqLimit = msToWait / msReqDelay;
 	let i = 0;
 	const interval = setInterval(() => {
@@ -123,7 +134,7 @@ const getChannelUsername = () => document.querySelector('span[itemprop="author"]
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
 const getActionsBar = () => $('actions')?.querySelector('ytd-menu-renderer');
-const untilChannelUsernameAppear = () => untilAppear(getChannelUsername, 10000).catch(() => '');
+const untilChannelUsernameAppear = () => untilAppear(getChannelUsername).catch(() => '');
 const isMusicChannel = async () => {
 	const el = await untilAppear(getAboveTheFold);
 	return !!el.querySelector('.badge-style-type-verified-artist');
@@ -155,9 +166,8 @@ function setSubtitlesValue(value) {
 const valueProps = {
 	[SPEED]: 'value',
 	[QUALITY]: 'value',
-	[SUBTITLES]: 'checked' // input-checkbox
+	[SUBTITLES]: 'checked'
 };
-const PAGE_CHECK_TIMEOUT = 1000;
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menuCont) {
@@ -167,22 +177,20 @@ const updateMenuVisibility = async () => {
 	else
 		channelName = name;
 };
-const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+const delay = (ms) => new Promise(res => setTimeout(res, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch')
 		return;
-	await sleep(PAGE_CHECK_TIMEOUT);
-	/* ---------------------- apply settings ---------------------- */
 	updateMenuVisibility();
 	if (!channelCfg) {
 		const channelUsername = await untilChannelUsernameAppear();
 		channelCfg = cfg.channels[channelUsername] ||= {};
 	}
 	const plr = await untilAppear(getPlr);
-	await sleep(1000);
+	await delay(1000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd())
-		await until(getAd, ad => !ad);
+		await until(getAd, ad => !ad, 200000);
 	ytMenu = Object.assign(plr.querySelector('.ytp-settings-menu'), {
 		_btn: plr.querySelector('.ytp-settings-button'),
 		isOpen() { return this.style.display !== 'none'; },
@@ -226,7 +234,6 @@ const onPageChange = async () => {
 		for (const setting in settings)
 			ytSettingItems[setting].setValue(settings[setting], setting);
 	});
-	/* ---------------------- settings menu ---------------------- */
 	if (menuCont)
 		return;
 	const div = (props) => el('div', props), input = (props) => el('input', props), checkbox = (props) => input({ type: 'checkbox', ...props }), labelEl = (forId, props) => {
@@ -295,17 +302,18 @@ const onPageChange = async () => {
 			return { elem };
 		};
 		const toOptions = (values, getText) => {
-			values.unshift(el('option', {
+			const result = Array(values.length + 1);
+			result[0] = el('option', {
 				value: text.DEFAULT,
 				textContent: text.DEFAULT,
 				checked: true
-			}));
-			for (let i = 1; i < values.length; i++)
-				values[i] = el('option', {
+			});
+			for (let i = 1; i < result.length; i++)
+				result[i] = el('option', {
 					value: values[i],
 					textContent: getText(values[i])
 				});
-			return values;
+			return result;
 		};
 		const speedValues = ['2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25'];
 		const qualityValues = ['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'];
@@ -317,14 +325,14 @@ const onPageChange = async () => {
 		return section;
 	};
 	const sections = div({ className: PREFIX + 'sections' });
-	sections.append(createSection(GLOBAL, text.GLOBAL, cfg.global), createSection(LOCAL, text.LOCAL, channelCfg));
-	const checkboxDiv = (id, cfgName, text) => {
+	sections.append(createSection("global", text.GLOBAL, cfg.global), createSection("thisChannel", text.LOCAL, channelCfg));
+	const checkboxDiv = (id, prop, text) => {
 		const cont = div({ className: 'check-cont' });
 		id = PREFIX + id;
 		cont.append(labelEl(id, { textContent: text }), checkbox({
 			id,
-			checked: cfg.flags[cfgName],
-			onclick() { cfg.flags[cfgName] = this.checked; }
+			checked: cfg.flags[prop],
+			onclick() { cfg.flags[prop] = this.checked; }
 		}));
 		return cont;
 	};
@@ -352,7 +360,7 @@ const onPageChange = async () => {
 	settingsIcon.append($('settings'));
 	const btn = button('', {
 		id: BTN_ID,
-		ariaLabel: 'open additional settings',
+		ariaLabel: text.OPEN_SETTINGS,
 		tabIndex: 0,
 		onclick() { menu.toggle(); }
 	});
@@ -371,7 +379,7 @@ setInterval(() => {
 		return;
 	lastHref = location.href;
 	onPageChange();
-}, PAGE_CHECK_TIMEOUT);
+}, 1000);
 const onClick = (e) => {
 	const { shortsToUsual, newTab } = cfg.flags;
 	if (!shortsToUsual && !newTab)

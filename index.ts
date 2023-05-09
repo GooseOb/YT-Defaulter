@@ -1,17 +1,23 @@
+const enum STORAGE {
+	NAME = 'YTDefaulter',
+	VERSION = 4
+}
+const enum SECTION {
+	GLOBAL = 'global',
+	LOCAL = 'thisChannel'
+}
+type AnyFn = (...args: any[]) => any;
 (function() {
 const
-	STORAGE_NAME = 'YTDefaulter',
-	STORAGE_VERSION = 3,
 	PREFIX = 'YTDef-',
 	CONT_ID = PREFIX + 'cont',
 	MENU_ID = PREFIX + 'menu',
 	BTN_ID = PREFIX + 'btn',
 	SUBTITLES = 'subtitles',
 	SPEED = 'speed',
-	QUALITY = 'qualityMax',
-	GLOBAL = 'global',
-	LOCAL = 'thisChannel';
+	QUALITY = 'quality';
 const text = {
+	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
 	SPEED: 'Speed',
 	QUALITY: 'Quality',
@@ -25,8 +31,11 @@ const text = {
 	SAVED: 'Saved',
 	DEFAULT: '-'
 };
-const translations = {
+type Dict = Record<keyof typeof text, string>;
+
+const translations: Record<string, Partial<Dict>> = {
 	'be-BY': {
+		OPEN_SETTINGS: 'Адкрыць дадатковыя налады',
 		SUBTITLES: 'Субтытры',
 		SPEED: 'Хуткасьць',
 		QUALITY: 'Якасьць',
@@ -44,18 +53,22 @@ const translations = {
 // @ts-ignore
 Object.assign(text, translations[document.documentElement.lang]);
 
-type Setting = typeof SPEED | typeof QUALITY | typeof SUBTITLES;
 type FlagName = 'shortsToUsual' | 'newTab' | 'copySubs' | 'standardMusicSpeed';
-type Cfg = Record<Setting, any>;
+type Cfg = {
+	speed?: string,
+	quality?: string,
+	subtitles?: boolean
+};
+type Setting = keyof Cfg;
 type ScriptCfg = {
-	_v: typeof STORAGE_VERSION,
+	_v: number,
 	global: Cfg,
 	channels: Record<string, Cfg>,
 	flags: Record<FlagName, boolean>
 };
-let cfg = localStorage[STORAGE_NAME];
-cfg = cfg ? JSON.parse(cfg) : {
-	_v: STORAGE_VERSION,
+const cfgLocalStorage = localStorage[STORAGE.NAME];
+const cfg: ScriptCfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
+	_v: STORAGE.VERSION,
 	global: {},
 	channels: {},
 	flags: {
@@ -64,7 +77,7 @@ cfg = cfg ? JSON.parse(cfg) : {
 		copySubs: false,
 		standardMusicSpeed: false
 	}
-} as ScriptCfg;
+};
 const copyObj = <T extends object>(obj: T): T => Object.assign({}, obj);
 const saveCfg = () => {
 	const cfgCopy = copyObj(cfg);
@@ -77,27 +90,35 @@ const saveCfg = () => {
 	}
 	cfgCopy.channels = channelsCfgCopy;
 
-	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
+	localStorage[STORAGE.NAME] = JSON.stringify(cfgCopy);
 };
 
-if (cfg._v !== STORAGE_VERSION)  {
+if (cfg._v !== STORAGE.VERSION)  {
 	switch (cfg._v) {
 		case 1:
-			const {shortsToUsual, newTab} = cfg;
-			cfg.flags = {
+			const {shortsToUsual, newTab} = cfg as any;
+			(cfg as any).flags = {
 				shortsToUsual, newTab,
 				copySubs: false
 			};
-			delete cfg.shortsToUsual;
-			delete cfg.newTab;
+			delete (cfg as any).shortsToUsual;
+			delete (cfg as any).newTab;
 			cfg._v = 2;
 		case 2:
 			cfg.flags.standardMusicSpeed = false;
 			cfg._v = 3;
+		case 3:
+			cfg.global.quality = (cfg.global as any).qualityMax;
+			delete (cfg.global as any).qualityMax;
+			for (const key in cfg.channels) {
+				const currCfg = cfg.channels[key];
+				currCfg.quality = (currCfg as any).qualityMax;
+				delete (currCfg as any).qualityMax;
+			}
+			cfg._v = STORAGE.VERSION;
 	}
 	saveCfg();
 }
-type AnyFn = (...args: any[]) => any;
 
 function debounce(callback: AnyFn, delay: number): AnyFn {
 	let timeout: number;
@@ -117,7 +138,7 @@ const restoreFocusAfter = (cb: AnyFn) => {
 const until = <TGetter extends AnyFn>(
 	getItem: TGetter,
 	check: (item: any) => boolean,
-	msToWait = 200_000,
+	msToWait = 10_000,
 	msReqDelay = 20
 ) => new Promise<ReturnType<TGetter>>((res, rej) => {
 	const reqLimit = msToWait / msReqDelay;
@@ -153,7 +174,7 @@ const getActionsBar = () =>
 	$('actions')?.querySelector('ytd-menu-renderer');
 
 const untilChannelUsernameAppear = () =>
-	untilAppear(getChannelUsername, 10_000).catch(() => '');
+	untilAppear(getChannelUsername).catch(() => '');
 
 const isMusicChannel = async () => {
 	const el = await untilAppear(getAboveTheFold);
@@ -165,13 +186,13 @@ type YtMenuApi = {
 	isOpen(): boolean,
 	open(): void,
 	close(): void,
-	openItem(item: HTMLButtonElement): HTMLElement[]
+	openItem(item: HTMLElement): HTMLElement[]
 };
 type YtMenu = HTMLDivElement & YtMenuApi;
 type YtSettingItems = Partial<Record<Setting, HTMLButtonElement & {setValue: AnyFn}>>;
 
 const
-	addValueSetter = <TEl extends HTMLElement>(el: TEl, setValue: AnyFn) => Object.assign(el, {setValue}),
+	addValueSetter = <TElem extends HTMLElement>(el: TElem, setValue: AnyFn) => Object.assign(el, {setValue}),
 	el = (tag: string, props?: object) => Object.assign(document.createElement(tag), props);
 let ytMenu: YtMenu, ytSettingItems: YtSettingItems, SPEED_NORMAL: string, menuCont: HTMLElement;
 let isSpeedChanged = false;
@@ -202,7 +223,6 @@ const valueProps = {
 	[QUALITY]: 'value', // input
 	[SUBTITLES]: 'checked' // input-checkbox
 } as const;
-const PAGE_CHECK_TIMEOUT = 1000;
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menuCont) {
@@ -210,10 +230,9 @@ const updateMenuVisibility = async () => {
 		menuCont.style.display = isTheSameChannel ? 'block' : 'none';
 	} else channelName = name;
 };
-const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
-	await sleep(PAGE_CHECK_TIMEOUT);
 
 	/* ---------------------- apply settings ---------------------- */
 
@@ -225,9 +244,9 @@ const onPageChange = async () => {
 	}
 
 	const plr = await untilAppear(getPlr);
-	await sleep(1000);
+	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
-	if (getAd()) await until(getAd, ad => !ad);
+	if (getAd()) await until(getAd, ad => !ad, 200_000);
 	ytMenu = Object.assign(plr.querySelector('.ytp-settings-menu'), {
 		_btn: plr.querySelector('.ytp-settings-button'),
 		isOpen() {return this.style.display !== 'none'},
@@ -273,7 +292,7 @@ const onPageChange = async () => {
 	isSpeedChanged = false;
 	restoreFocusAfter(() => {
 		for (const setting in settings)
-			ytSettingItems[setting as Setting].setValue(settings[setting], setting);
+			ytSettingItems[setting as Setting].setValue(settings[setting as Setting], setting);
 	});
 
 	/* ---------------------- settings menu ---------------------- */
@@ -325,7 +344,11 @@ const onPageChange = async () => {
 	const createSection = (sectionId: string, title: string, sectionCfg: Cfg) => {
 		const section = div({role: 'group'});
 		section.setAttribute('aria-labelledby', sectionId);
-		const addItem = (name: Setting, textContent: string, elem: HTMLElement) => {
+		const addItem = <TElem extends HTMLElement>(
+			name: Setting,
+			textContent: string,
+			elem: TElem
+		) => {
 			const item = div();
 			const id = PREFIX + name + '-' + sectionId;
 			const label = labelEl(id, {textContent});
@@ -334,8 +357,9 @@ const onPageChange = async () => {
 				id,
 				name: name,
 				onchange() {
-					const value = this[valueProp];
+					const value = this[valueProp] as string | boolean;
 					if (value === '' || value === 'default') delete sectionCfg[name];
+					// @ts-ignore
 					else sectionCfg[name] = value;
 				}
 			});
@@ -349,24 +373,28 @@ const onPageChange = async () => {
 			return {elem};
 		};
 
-		const toOptions = (values: any[], getText: (arg: any) => string) => {
-			values.unshift(el('option', {
+		type ToOptions = (values: readonly string[], getText: (arg: string) => string) => HTMLOptionElement[];
+
+		const toOptions: ToOptions = (values, getText) => {
+			const result: HTMLOptionElement[] = Array(values.length + 1);
+			result[0] = el('option', {
 				value: text.DEFAULT,
 				textContent: text.DEFAULT,
 				checked: true
-			}));
-			for (let i = 1; i < values.length; i++)
-				values[i] = el('option', {
+			}) as HTMLOptionElement;
+			for (let i = 1; i < result.length; i++)
+				result[i] = el('option', {
 					value: values[i],
 					textContent: getText(values[i])
-				});
-			return values;
+				}) as HTMLOptionElement;
+			return result;
 		};
 		const speedValues = ['2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25'];
 		const qualityValues = ['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'];
 
-		const addSelectItem = (name: Setting, text: string, options: any[], getText: (arg: any) => string) =>
-			addItem(name, text, el('select')).elem.append(...toOptions(options, getText));
+		type AddSelectItem = (name: Setting, text: string, ...args: Parameters<ToOptions>) => void;
+		const addSelectItem: AddSelectItem = (name, text, options, getText) =>
+			addItem(name, text, el('select') as HTMLSelectElement).elem.append(...toOptions(options, getText));
 
 		section.append(el('span', {textContent: title, id: sectionId}));
 		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
@@ -377,18 +405,18 @@ const onPageChange = async () => {
 
 	const sections = div({className: PREFIX + 'sections'});
 	sections.append(
-		createSection(GLOBAL, text.GLOBAL, cfg.global),
-		createSection(LOCAL, text.LOCAL, channelCfg)
+		createSection(SECTION.GLOBAL, text.GLOBAL, cfg.global),
+		createSection(SECTION.LOCAL, text.LOCAL, channelCfg)
 	);
-	const checkboxDiv = (id: string, cfgName: string, text: string) => {
+	const checkboxDiv = (id: string, prop: FlagName, text: string) => {
 		const cont = div({className: 'check-cont'});
 		id = PREFIX + id;
 		cont.append(
 			labelEl(id, {textContent: text}),
 			checkbox({
 				id,
-				checked: cfg.flags[cfgName],
-				onclick() {cfg.flags[cfgName] = this.checked}
+				checked: cfg.flags[prop],
+				onclick() {cfg.flags[prop] = this.checked}
 			})
 		);
 		return cont;
@@ -425,7 +453,7 @@ const onPageChange = async () => {
 	settingsIcon.append($('settings'));
 	const btn = button('', {
 		id: BTN_ID,
-		ariaLabel: 'open additional settings',
+		ariaLabel: text.OPEN_SETTINGS,
 		tabIndex: 0,
 		onclick() {menu.toggle()}
 	});
@@ -444,7 +472,7 @@ setInterval(() => {
 	if (lastHref === location.href) return;
 	lastHref = location.href;
 	onPageChange();
-}, PAGE_CHECK_TIMEOUT);
+}, 1_000);
 
 const onClick = (e: Event) => {
 	const {shortsToUsual, newTab} = cfg.flags;
