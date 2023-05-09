@@ -6,11 +6,14 @@ const {readFile} = require('fs/promises');
 
 const header = readFile('header.txt', 'utf-8');
 
-gulp.task('default',
-    async () => tsProject.src()
-        .pipe(tsProject()).js
-        .pipe(replace(/ {4}/g, '\t'))
-        .pipe(replace(/\n\t/g, '\n'))
-        .pipe(replace(/^/, await header))
-        .pipe(gulp.dest('.'))
-);
+const typescript = async () => tsProject.src()
+    .pipe(tsProject()).js
+    .pipe(replace(/ {4}/g, '\t'))
+    .pipe(replace(/\n\t/g, '\n'))
+    .pipe(replace(/^/, await header))
+    .pipe(gulp.dest('.'));
+
+exports.default = () => {
+    typescript();
+    gulp.watch('index.ts', typescript);
+};

@@ -308,7 +308,7 @@ const onPageChange = async () => {
 				textContent: text.DEFAULT,
 				checked: true
 			});
-			for (let i = 0; i < result.length; i++)
+			for (let i = 0; i < values.length; i++)
 				result[i + 1] = el('option', {
 					value: values[i],
 					textContent: getText(values[i])
