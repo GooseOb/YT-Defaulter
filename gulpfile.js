@@ -6,7 +6,7 @@ const {readFile} = require('fs/promises');
 
 const header = readFile('header.txt', 'utf-8');
 
-const typescript = async () => tsProject.src()
+const process = async () => tsProject.src()
 	.pipe(tsProject()).js
 	.pipe(replace(/ {4}/g, '\t'))
 	.pipe(replace(/\n\t/g, '\n'))
@@ -14,6 +14,6 @@ const typescript = async () => tsProject.src()
 	.pipe(gulp.dest('.'));
 
 exports.default = () => {
-	typescript();
-	gulp.watch('index.ts', typescript);
+	process();
+	gulp.watch('index.ts', process);
 };
