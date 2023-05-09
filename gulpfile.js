@@ -2,7 +2,7 @@ const gulp = require('gulp');
 const ts = require('gulp-typescript');
 const tsProject = ts.createProject('tsconfig.json');
 const replace = require('gulp-replace');
-const {readFile} = require('fs/promises');
+const { readFile } = require('fs/promises');
 
 const header = readFile('header.txt', 'utf-8');
 
