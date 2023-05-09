@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.5.1
+// @version      1.5.5.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -139,15 +139,15 @@ const isMusicChannel = async () => {
 	const el = await untilAppear(getAboveTheFold);
 	return !!el.querySelector('.badge-style-type-verified-artist');
 };
-const addValueSetter = (el, setValue) => Object.assign(el, { setValue }), el = (tag, props) => Object.assign(document.createElement(tag), props);
+const addValueSetter = (el, setValue, setting) => Object.assign(el, { setValue, setting }), el = (tag, props) => Object.assign(document.createElement(tag), props);
 let ytMenu, ytSettingItems, SPEED_NORMAL, menuCont;
 let isSpeedChanged = false;
 const comparators = {
 	[QUALITY]: (value, current) => +value >= parseInt(current),
 	[SPEED]: (value, current) => value === current
 };
-function setValue(value, setting) {
-	const compare = comparators[setting];
+function setValue(value) {
+	const compare = comparators[this.setting];
 	for (const btn of ytMenu.openItem(this))
 		if (compare(value, btn.textContent)) {
 			btn.click();
@@ -155,8 +155,8 @@ function setValue(value, setting) {
 		}
 	ytMenu.close();
 }
-function setSpeedValue(value, setting) {
-	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value, setting]);
+function setSpeedValue(value) {
+	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value]);
 	isSpeedChanged = !isSpeedChanged;
 }
 function setSubtitlesValue(value) {
@@ -210,11 +210,11 @@ const onPageChange = async () => {
 	const menuItemArr = Array.from(await until(getMenuItems, arr => arr.length));
 	const areSubtitles = menuItemArr.length === 3;
 	ytSettingItems = {
-		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue),
-		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue)
+		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
+		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue, SPEED)
 	};
 	if (areSubtitles)
-		ytSettingItems[SUBTITLES] = addValueSetter(plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue);
+		ytSettingItems[SUBTITLES] = addValueSetter(plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue, SUBTITLES);
 	if (!SPEED_NORMAL)
 		restoreFocusAfter(() => {
 			const labels = ytMenu.openItem(ytSettingItems[SPEED]);
@@ -232,7 +232,7 @@ const onPageChange = async () => {
 	isSpeedChanged = false;
 	restoreFocusAfter(() => {
 		for (const setting in settings)
-			ytSettingItems[setting].setValue(settings[setting], setting);
+			ytSettingItems[setting].setValue(settings[setting]);
 	});
 	if (menuCont)
 		return;

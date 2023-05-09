@@ -189,10 +189,13 @@ type YtMenuApi = {
 	openItem(item: HTMLElement): HTMLElement[]
 };
 type YtMenu = HTMLDivElement & YtMenuApi;
-type YtSettingItems = Partial<Record<Setting, HTMLButtonElement & {setValue: AnyFn}>>;
+type ValueSetter = (value: string | boolean) => void;
+type YtSettingItem = HTMLButtonElement & {setValue: ValueSetter, setting: Setting};
+type YtSettingItems = Partial<Record<Setting, YtSettingItem>>;
 
 const
-	addValueSetter = <TElem extends HTMLElement>(el: TElem, setValue: AnyFn) => Object.assign(el, {setValue}),
+	addValueSetter = <TElem extends HTMLElement>(el: TElem, setValue: ValueSetter, setting: Setting) =>
+		Object.assign(el, {setValue, setting}),
 	el = (tag: string, props?: object) => Object.assign(document.createElement(tag), props);
 let ytMenu: YtMenu, ytSettingItems: YtSettingItems, SPEED_NORMAL: string, menuCont: HTMLElement;
 let isSpeedChanged = false;
@@ -200,8 +203,8 @@ const comparators = {
 	[QUALITY]: (value: string, current: string) => +value >= parseInt(current),
 	[SPEED]: (value: string, current: string) => value === current
 } as const;
-function setValue(value: string, setting: keyof typeof comparators) {
-	const compare = comparators[setting];
+function setValue(value: string) {
+	const compare = comparators[this.setting as keyof typeof comparators];
 
 	for (const btn of ytMenu.openItem(this))
 		if (compare(value, btn.textContent)) {
@@ -211,8 +214,8 @@ function setValue(value: string, setting: keyof typeof comparators) {
 
 	ytMenu.close();
 }
-function setSpeedValue(value: string, setting: Setting) {
-	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value, setting]);
+function setSpeedValue(value: string) {
+	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value]);
 	isSpeedChanged = !isSpeedChanged;
 }
 function setSubtitlesValue(value: boolean) {
@@ -263,14 +266,16 @@ const onPageChange = async () => {
 		ytMenu.close();
 	});
 	const getMenuItems = () => ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]');
-	const menuItemArr = Array.from(await until(getMenuItems, arr => arr.length)) as HTMLButtonElement[];
+	const menuItemArr = Array.from(
+		await until(getMenuItems, arr => arr.length)
+	) as HTMLButtonElement[];
 	const areSubtitles = menuItemArr.length === 3;
 	ytSettingItems = {
-		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue),
-		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue)
+		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
+		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue, SPEED)
 	};
 	if (areSubtitles) ytSettingItems[SUBTITLES] = addValueSetter(
-		plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue
+		plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue, SUBTITLES
 	);
 	if (!SPEED_NORMAL) restoreFocusAfter(() => {
 		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
@@ -292,7 +297,7 @@ const onPageChange = async () => {
 	isSpeedChanged = false;
 	restoreFocusAfter(() => {
 		for (const setting in settings)
-			ytSettingItems[setting as Setting].setValue(settings[setting as Setting], setting);
+			ytSettingItems[setting as Setting].setValue(settings[setting as Setting]);
 	});
 
 	/* ---------------------- settings menu ---------------------- */
