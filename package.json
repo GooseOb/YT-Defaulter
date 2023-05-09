@@ -1,0 +1,19 @@
+{
+  "name": "yt-defaulter",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GooseOb/YT-Defaulter.git"
+  },
+  "author": "GooseOb",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GooseOb/YT-Defaulter/issues"
+  },
+  "devDependencies": {
+    "gulp": "^4.0.0",
+    "gulp-replace": "^1.1.4",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "typescript": "^5.0.4"
+  }
+}
