@@ -1,14 +1,10 @@
-const enum STORAGE {
-	NAME = 'YTDefaulter',
-	VERSION = 4
-}
-const enum SECTION {
-	GLOBAL = 'global',
-	LOCAL = 'thisChannel'
-}
 type AnyFn = (...args: any[]) => any;
-(function() {
+
 const
+	STORAGE_NAME = 'YTDefaulter',
+	STORAGE_VERSION = 4,
+	SECTION_GLOBAL = 'global',
+	SECTION_LOCAL = 'thisChannel',
 	PREFIX = 'YTDef-',
 	CONT_ID = PREFIX + 'cont',
 	MENU_ID = PREFIX + 'menu',
@@ -66,9 +62,9 @@ type ScriptCfg = {
 	channels: Record<string, Cfg>,
 	flags: Record<FlagName, boolean>
 };
-const cfgLocalStorage = localStorage[STORAGE.NAME];
+const cfgLocalStorage = localStorage[STORAGE_NAME];
 const cfg: ScriptCfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
-	_v: STORAGE.VERSION,
+	_v: STORAGE_VERSION,
 	global: {},
 	channels: {},
 	flags: {
@@ -90,10 +86,10 @@ const saveCfg = () => {
 	}
 	cfgCopy.channels = channelsCfgCopy;
 
-	localStorage[STORAGE.NAME] = JSON.stringify(cfgCopy);
+	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
 
-if (cfg._v !== STORAGE.VERSION)  {
+if (cfg._v !== STORAGE_VERSION)  {
 	switch (cfg._v) {
 		case 1:
 			const {shortsToUsual, newTab} = cfg as any;
@@ -115,7 +111,7 @@ if (cfg._v !== STORAGE.VERSION)  {
 				currCfg.quality = (currCfg as any).qualityMax;
 				delete (currCfg as any).qualityMax;
 			}
-			cfg._v = STORAGE.VERSION;
+			cfg._v = STORAGE_VERSION;
 	}
 	saveCfg();
 }
@@ -410,8 +406,8 @@ const onPageChange = async () => {
 
 	const sections = div({className: PREFIX + 'sections'});
 	sections.append(
-		createSection(SECTION.GLOBAL, text.GLOBAL, cfg.global),
-		createSection(SECTION.LOCAL, text.LOCAL, channelCfg)
+		createSection(SECTION_GLOBAL, text.GLOBAL, cfg.global),
+		createSection(SECTION_LOCAL, text.LOCAL, channelCfg)
 	);
 	const checkboxDiv = (id: string, prop: FlagName, text: string) => {
 		const cont = div({className: 'check-cont'});
@@ -569,4 +565,3 @@ ${m+i}::-webkit-outer-spin-button,
 ${m+i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m+i}[type=number] {-moz-appearance: textfield}
 ${m+s}::-ms-expand {display: none}`}));
-})();

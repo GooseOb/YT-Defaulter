@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.5.5.2
+// @version      1.5.5.3
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -9,8 +9,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==
 
-(function () {
-const PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'quality';
+(function(){const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'quality';
 const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
@@ -44,9 +43,9 @@ const translations = {
 	}
 };
 Object.assign(text, translations[document.documentElement.lang]);
-const cfgLocalStorage = localStorage["YTDefaulter"];
+const cfgLocalStorage = localStorage[STORAGE_NAME];
 const cfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
-	_v: 4,
+	_v: STORAGE_VERSION,
 	global: {},
 	channels: {},
 	flags: {
@@ -67,9 +66,9 @@ const saveCfg = () => {
 			delete channelsCfgCopy[key];
 	}
 	cfgCopy.channels = channelsCfgCopy;
-	localStorage["YTDefaulter"] = JSON.stringify(cfgCopy);
+	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
-if (cfg._v !== 4) {
+if (cfg._v !== STORAGE_VERSION) {
 	switch (cfg._v) {
 		case 1:
 			const { shortsToUsual, newTab } = cfg;
@@ -91,7 +90,7 @@ if (cfg._v !== 4) {
 				currCfg.quality = currCfg.qualityMax;
 				delete currCfg.qualityMax;
 			}
-			cfg._v = 4;
+			cfg._v = STORAGE_VERSION;
 	}
 	saveCfg();
 }
@@ -325,7 +324,7 @@ const onPageChange = async () => {
 		return section;
 	};
 	const sections = div({ className: PREFIX + 'sections' });
-	sections.append(createSection("global", text.GLOBAL, cfg.global), createSection("thisChannel", text.LOCAL, channelCfg));
+	sections.append(createSection(SECTION_GLOBAL, text.GLOBAL, cfg.global), createSection(SECTION_LOCAL, text.LOCAL, channelCfg));
 	const checkboxDiv = (id, prop, text) => {
 		const cont = div({ className: 'check-cont' });
 		id = PREFIX + id;
@@ -467,5 +466,4 @@ ${m} label {margin-right: 1.5rem; white-space: nowrap}
 ${m + i}::-webkit-outer-spin-button,
 ${m + i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m + i}[type=number] {-moz-appearance: textfield}
-${m + s}::-ms-expand {display: none}` }));
-})();
+${m + s}::-ms-expand {display: none}` }));})();

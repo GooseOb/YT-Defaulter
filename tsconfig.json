@@ -3,6 +3,7 @@
   "compilerOptions": {
     "noImplicitAny": true,
     "target": "es2022",
-    "removeComments": true
+    "removeComments": true,
+    "isolatedModules": true
   }
 }
