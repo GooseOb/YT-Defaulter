@@ -25,8 +25,10 @@ export const build = () => tsProject.src()
 	}))
 	.pipe(gulp.dest('.'));
 
-export default () => {
+export const watch = () => {
 	build();
 	gulp.watch('header.txt', gulp.series(updateHeader, build));
 	gulp.watch('index.ts', build);
 };
+
+export default watch;
