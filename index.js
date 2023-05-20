@@ -9,7 +9,8 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==
 
-(function(){const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'quality';
+(function(){
+const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SUBTITLES = 'subtitles', SPEED = 'speed', QUALITY = 'quality';
 const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
@@ -466,4 +467,5 @@ ${m} label {margin-right: 1.5rem; white-space: nowrap}
 ${m + i}::-webkit-outer-spin-button,
 ${m + i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m + i}[type=number] {-moz-appearance: textfield}
-${m + s}::-ms-expand {display: none}` }));})();
+${m + s}::-ms-expand {display: none}` }));
+})();

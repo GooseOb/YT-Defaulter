@@ -1,31 +1,32 @@
-const { dest, watch, series } = require('gulp');
-const ts = require('gulp-typescript');
+import gulp from 'gulp';
+import ts from 'gulp-typescript';
+import through2 from 'through2';
+import { readFile } from 'fs/promises';
+
 const tsProject = ts.createProject('tsconfig.json');
-const { readFile } = require('fs/promises');
-const through2 = require('through2');
 
 let header;
 const updateHeader = async (done) => {
 	header = await readFile('header.txt', 'utf-8');
 	done?.();
 };
+await updateHeader();
 
-const processText = (text) => `\n(function(){${text
+const processText = (text) => `\n(function(){\n${text
 	.replace(/ {4}/g, '\t')
-}})();`.replace(/^/, header);
+}\n})();`.replace(/^/, header);
 
-const process = () => tsProject.src()
+export const build = () => tsProject.src()
 	.pipe(tsProject()).js
 	.pipe(through2.obj((file, _, cb) => {
 		if (file.isBuffer())
 			file.contents = Buffer.from(processText(file.contents.toString()));
 		cb(null, file);
 	}))
-	.pipe(dest('.'));
+	.pipe(gulp.dest('.'));
 
-exports.default = async () => {
-	await updateHeader();
-	process();
-	watch('header.txt', series(updateHeader, process));
-	watch('index.ts', process);
+export default () => {
+	build();
+	gulp.watch('header.txt', gulp.series(updateHeader, build));
+	gulp.watch('index.ts', build);
 };
