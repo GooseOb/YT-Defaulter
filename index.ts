@@ -193,7 +193,7 @@ type YtMenuApi = {
 	close(): void,
 	openItem(item: HTMLElement): HTMLElement[]
 };
-type YtMenu = HTMLDivElement & YtMenuApi;
+type YtMenu = HTMLElement & YtMenuApi;
 type ValueSetter = (value: string | boolean) => void;
 type YtSettingItem = HTMLButtonElement & {setValue: ValueSetter, setting: YTSetting};
 type YtSettingItems = Partial<Record<YTSetting, YtSettingItem>>;
@@ -235,12 +235,6 @@ function setSpeedValue(value: string) {
 function setSubtitlesValue(value: boolean) {
 	if (this.ariaPressed !== value.toString()) this.click();
 }
-const valueProps = {
-	[SPEED]: 'value', // select
-	[CUSTOM_SPEED]: 'value', // input
-	[QUALITY]: 'value', // input
-	[SUBTITLES]: 'checked' // input-checkbox
-} as const;
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menuCont) {
@@ -265,7 +259,7 @@ const onPageChange = async () => {
 	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd()) await until(getAd, ad => !ad, 200_000);
-	ytMenu = Object.assign(plr.querySelector('.ytp-settings-menu'), {
+	ytMenu = Object.assign(plr.querySelector<HTMLElement>('.ytp-settings-menu'), {
 		_btn: plr.querySelector('.ytp-settings-button'),
 		isOpen() {return this.style.display !== 'none'},
 		open()  {this.isOpen() || this._btn.click()},
@@ -275,7 +269,7 @@ const onPageChange = async () => {
 			item.click();
 			return Array.from(this.querySelectorAll('.ytp-panel-animate-forward .ytp-menuitem-label'));
 		}
-	} as YtMenuApi) as YtMenu;
+	} as YtMenuApi);
 	restoreFocusAfter(() => {
 		ytMenu.open();
 		ytMenu.close();
@@ -377,7 +371,7 @@ const onPageChange = async () => {
 		const section = div({role: 'group'});
 		section.setAttribute('aria-labelledby', sectionId);
 		const getLocalId = (name: string) => PREFIX + name + '-' + sectionId;
-		const addItem = <TElem extends HTMLElement>(
+		const addItem = <TElem extends HTMLInputElement | HTMLSelectElement>(
 			name: Setting,
 			innerHTML: string,
 			elem: TElem
@@ -385,16 +379,16 @@ const onPageChange = async () => {
 			const item = div();
 			const id = getLocalId(name);
 			const label = labelEl(id, {innerHTML});
-			const valueProp = valueProps[name];
+			const valueProp = elem.type === 'checkbox' ? 'checked' : 'value';
 			Object.assign(elem, {
 				id,
 				name: name,
 				onchange() {
-					const value = this[valueProp] as string | boolean;
+					const value: string | boolean = (this as any)[valueProp];
 					if (value === '' || value === text.DEFAULT) delete sectionCfg[name];
 					else (sectionCfg as any)[name] = value;
 				}
-			});
+			} as Partial<HTMLInputElement & HTMLSelectElement>);
 			const cfgValue = sectionCfg[name];
 			if (cfgValue) setTimeout(() => {
 				(elem as any)[valueProp] = cfgValue;

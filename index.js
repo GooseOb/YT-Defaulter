@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6
+// @version      1.6.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -176,12 +176,6 @@ function setSubtitlesValue(value) {
 	if (this.ariaPressed !== value.toString())
 		this.click();
 }
-const valueProps = {
-	[SPEED]: 'value',
-	[CUSTOM_SPEED]: 'value',
-	[QUALITY]: 'value',
-	[SUBTITLES]: 'checked'
-};
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menuCont) {
@@ -302,7 +296,7 @@ const onPageChange = async () => {
 			const item = div();
 			const id = getLocalId(name);
 			const label = labelEl(id, { innerHTML });
-			const valueProp = valueProps[name];
+			const valueProp = elem.type === 'checkbox' ? 'checked' : 'value';
 			Object.assign(elem, {
 				id,
 				name: name,
@@ -365,7 +359,9 @@ const onPageChange = async () => {
 		return cont;
 	};
 	menu.append(sections, checkboxDiv('shorts', 'shortsToUsual', text.SHORTS), checkboxDiv('new-tab', 'newTab', text.NEW_TAB), checkboxDiv('copy-subs', 'copySubs', text.COPY_SUBS), checkboxDiv('standard-music-speed', 'standardMusicSpeed', text.STANDARD_MUSIC_SPEED), button(text.SAVE, {
-		setTextDefer: debounce(function (text) { this.textContent = text; }, 1000),
+		setTextDefer: debounce(function (text) {
+			this.textContent = text;
+		}, 1000),
 		onclick() {
 			saveCfg();
 			this.textContent = text.SAVED;
