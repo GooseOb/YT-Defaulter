@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.2
+// @version      1.6.3
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -129,7 +129,7 @@ const until = (getItem, check, msToWait = 10000, msReqTimeout = 20) => new Promi
 	};
 });
 const untilAppear = (getItem, msToWait) => until(getItem, Boolean, msToWait);
-let channelCfg, channelName, isTheSameChannel = true, video, ytMenu, ytSettingItems, menu, menuWidth, menuBtn, SPEED_NORMAL, isSpeedChanged = false;
+let channelCfg, channelName, isTheSameChannel = true, video, ytMenu, ytSettingItems, menu, SPEED_NORMAL, isSpeedChanged = false;
 const $ = (id) => document.getElementById(id);
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
 const getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*\/@/, '');
@@ -174,9 +174,9 @@ function setSubtitlesValue(value) {
 }
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
-	if (menuBtn) {
+	if (menu.btn) {
 		isTheSameChannel = channelName === name;
-		menuBtn.style.display = isTheSameChannel ? 'flex' : 'none';
+		menu.btn.style.display = isTheSameChannel ? 'flex' : 'none';
 	}
 	else
 		channelName = name;
@@ -261,27 +261,58 @@ const onPageChange = async () => {
 	menu = div({
 		id: MENU_ID,
 		isOpen: false,
+		width: 0,
 		closeListener: {
-			listener(e) {
+			onClick(e) {
 				const el = e.target;
 				if (el === menu || el.closest('#' + MENU_ID))
 					return;
-				menu.toggle();
+				menu._close();
 			},
-			add() { document.addEventListener('click', this.listener); },
-			remove() { document.removeEventListener('click', this.listener); },
+			onKeyUp(e) {
+				if (e.code !== 'Escape')
+					return;
+				menu._close();
+				menu.btn.focus();
+			},
+			add() {
+				document.addEventListener('click', this.onClick);
+				document.addEventListener('keyup', this.onKeyUp);
+			},
+			remove() {
+				document.removeEventListener('click', this.onClick);
+				document.removeEventListener('keyup', this.onKeyUp);
+			},
+		},
+		_open() {
+			this.fixPosition();
+			this.style.visibility = 'visible';
+			this.closeListener.add();
+			this.querySelector('select').focus();
+			this.isOpen = true;
+		},
+		_close() {
+			this.style.visibility = 'hidden';
+			this.closeListener.remove();
+			this.isOpen = false;
 		},
 		toggle: debounce(function () {
-			if (this.isOpen) {
-				this.style.visibility = 'hidden';
-				this.closeListener.remove();
-			}
-			else {
-				this.style.visibility = 'visible';
-				this.closeListener.add();
-			}
-			this.isOpen = !this.isOpen;
-		}, 100)
+			if (this.isOpen)
+				this._close();
+			else
+				this._open();
+		}, 100),
+		fixPosition() {
+			const { y, height, width, left } = this.btn.getBoundingClientRect();
+			this.style.top = y + height + 8 + 'px';
+			this.style.left = left + width - this.width + 'px';
+		},
+		btn: button('', {
+			id: BTN_ID,
+			ariaLabel: text.OPEN_SETTINGS,
+			tabIndex: 0,
+			onclick() { menu.toggle(); }
+		})
 	});
 	const createSection = (sectionId, title, sectionCfg) => {
 		const section = div({ role: 'group' });
@@ -328,7 +359,7 @@ const onPageChange = async () => {
 			className: CUSTOM_SPEED_HINT_CLASS,
 			textContent: text.CUSTOM_SPEED_HINT,
 			hide() { this.style.display = 'none'; },
-			show() { this.style.display = 'flex'; }
+			show() { this.style.display = 'block'; }
 		});
 		customSpeedHint.hide();
 		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
@@ -377,20 +408,14 @@ const onPageChange = async () => {
 	for (const key in iconStyle)
 		settingsIcon.setAttribute(key, iconStyle[key]);
 	settingsIcon.append($('settings'));
-	menuBtn = button('', {
-		id: BTN_ID,
-		ariaLabel: text.OPEN_SETTINGS,
-		tabIndex: 0,
-		onclick() { menu.toggle(); }
-	});
-	menuBtn.setAttribute('aria-controls', MENU_ID);
-	menuBtn.classList.add(btnClass + '--icon-button');
-	menuBtn.append(settingsIcon);
+	menu.btn.setAttribute('aria-controls', MENU_ID);
+	menu.btn.classList.add(btnClass + '--icon-button');
+	menu.btn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menuBtn, actionsBar.lastChild);
+	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
 	document.querySelector('ytd-popup-container').append(menu);
-	menuWidth = menu.getBoundingClientRect().width;
-	fixMenuPosition();
+	menu.width = menu.getBoundingClientRect().width;
+	sections.style.maxWidth = sections.offsetWidth + 'px';
 };
 let lastHref;
 setInterval(() => {
@@ -451,13 +476,12 @@ document.addEventListener('keyup', e => {
 	e.stopPropagation();
 	e.preventDefault();
 });
-const fixMenuPosition = () => {
-	const { y, height, width, left } = menuBtn.getBoundingClientRect();
-	menu.style.top = y + height + 8 + 'px';
-	menu.style.left = left + width - menuWidth + 'px';
+const listener = () => {
+	if (menu.isOpen)
+		menu.fixPosition();
 };
-document.addEventListener('scroll', fixMenuPosition);
-document.addEventListener('resize', fixMenuPosition);
+window.addEventListener('scroll', listener);
+window.addEventListener('resize', listener);
 const m = '#' + MENU_ID, d = ' div', i = ' input', s = ' select', bg = 'var(--yt-spec-menu-background)', underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
 document.head.append(getElCreator('style')({ textContent: `
 #${BTN_ID} {position: relative; margin-left: 8px}
@@ -494,7 +518,7 @@ width: 5rem;
 padding: 0;
 margin-left: auto
 }
-${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0}
+${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0; text-align: end}
 ${m + i} {outline: none}
 ${m + d + d + d}:focus-within > label, ${m} .check-cont:focus-within > label {${underline}}
 ${m} .check-cont {padding: 0 1rem}

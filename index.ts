@@ -163,12 +163,18 @@ const untilAppear = <TGetter extends AnyFn>(getItem: TGetter, msToWait?: number)
 
 type Menu = HTMLDivElement & {
 	isOpen: boolean,
+	btn: HTMLButtonElement,
+	width: number,
 	closeListener: {
-		listener(e: Event): void,
+		onClick(e: Event): void,
+		onKeyUp(e: KeyboardEvent): void,
 		add(): void,
 		remove(): void
 	},
-	toggle(): void
+	_open(): void,
+	_close(): void,
+	toggle(): void,
+	fixPosition(): void
 };
 
 let
@@ -182,8 +188,6 @@ let
 	ytSettingItems: YtSettingItems,
 
 	menu: Menu,
-	menuWidth: number,
-	menuBtn: HTMLButtonElement,
 
 	SPEED_NORMAL: string,
 	isSpeedChanged = false;
@@ -260,9 +264,9 @@ function setSubtitlesValue(value: boolean) {
 }
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
-	if (menuBtn) {
+	if (menu.btn) {
 		isTheSameChannel = channelName === name;
-		menuBtn.style.display = isTheSameChannel ? 'flex' : 'none';
+		menu.btn.style.display = isTheSameChannel ? 'flex' : 'none';
 	} else channelName = name;
 };
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -368,25 +372,54 @@ const onPageChange = async () => {
 	menu = div({
 		id: MENU_ID,
 		isOpen: false,
+		width: 0,
 		closeListener: {
-			listener(e: Event) {
+			onClick(e: Event) {
 				const el = e.target as HTMLElement;
 				if (el === menu || el.closest('#' + MENU_ID)) return;
-				menu.toggle();
+				menu._close();
 			},
-			add() {document.addEventListener('click', this.listener)},
-			remove() {document.removeEventListener('click', this.listener)},
+			onKeyUp(e) {
+				if (e.code !== 'Escape') return;
+				menu._close();
+				menu.btn.focus();
+			},
+			add() {
+				document.addEventListener('click', this.onClick);
+				document.addEventListener('keyup', this.onKeyUp);
+			},
+			remove() {
+				document.removeEventListener('click', this.onClick);
+				document.removeEventListener('keyup', this.onKeyUp);
+			},
+		},
+		_open() {
+			this.fixPosition();
+			this.style.visibility = 'visible';
+			this.closeListener.add();
+			this.querySelector('select').focus();
+			this.isOpen = true;
+		},
+		_close() {
+			this.style.visibility = 'hidden';
+			this.closeListener.remove();
+			this.isOpen = false;
 		},
 		toggle: debounce(function() {
-			if (this.isOpen) {
-				this.style.visibility = 'hidden';
-				this.closeListener.remove();
-			} else {
-				this.style.visibility = 'visible';
-				this.closeListener.add();
-			}
-			this.isOpen = !this.isOpen;
-		}, 100)
+			if (this.isOpen) this._close()
+			else this._open();
+		}, 100),
+		fixPosition() {
+			const { y, height, width, left } = this.btn.getBoundingClientRect();
+			this.style.top = y + height + 8 + 'px';
+			this.style.left = left + width - this.width + 'px';
+		},
+		btn: button('', {
+			id: BTN_ID,
+			ariaLabel: text.OPEN_SETTINGS,
+			tabIndex: 0,
+			onclick() {menu.toggle()}
+		})
 	});
 
 	const createSection = (sectionId: string, title: string, sectionCfg: Cfg) => {
@@ -443,7 +476,7 @@ const onPageChange = async () => {
 			className: CUSTOM_SPEED_HINT_CLASS,
 			textContent: text.CUSTOM_SPEED_HINT,
 			hide() {this.style.display = 'none'},
-			show() {this.style.display = 'flex'}
+			show() {this.style.display = 'block'}
 		});
 		customSpeedHint.hide();
 		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
@@ -507,20 +540,14 @@ const onPageChange = async () => {
 	};
 	for (const key in iconStyle) settingsIcon.setAttribute(key, iconStyle[key as keyof typeof iconStyle]);
 	settingsIcon.append($('settings'));
-	menuBtn = button('', {
-		id: BTN_ID,
-		ariaLabel: text.OPEN_SETTINGS,
-		tabIndex: 0,
-		onclick() {menu.toggle()}
-	});
-	menuBtn.setAttribute('aria-controls', MENU_ID);
-	menuBtn.classList.add(btnClass + '--icon-button');
-	menuBtn.append(settingsIcon);
+	menu.btn.setAttribute('aria-controls', MENU_ID);
+	menu.btn.classList.add(btnClass + '--icon-button');
+	menu.btn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menuBtn, actionsBar.lastChild);
+	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
 	document.querySelector('ytd-popup-container').append(menu);
-	menuWidth = menu.getBoundingClientRect().width;
-	fixMenuPosition();
+	menu.width = menu.getBoundingClientRect().width;
+	sections.style.maxWidth = sections.offsetWidth + 'px';
 };
 
 let lastHref: string;
@@ -577,13 +604,11 @@ document.addEventListener('keyup', e => {
 	e.stopPropagation();
 	e.preventDefault();
 });
-const fixMenuPosition = () => {
-	const { y, height, width, left } = menuBtn.getBoundingClientRect();
-	menu.style.top = y + height + 8 + 'px';
-	menu.style.left = left + width - menuWidth + 'px';
+const listener = () => {
+	if (menu.isOpen) menu.fixPosition();
 };
-document.addEventListener('scroll', fixMenuPosition);
-document.addEventListener('resize', fixMenuPosition);
+window.addEventListener('scroll', listener);
+window.addEventListener('resize', listener);
 
 const
 	m = '#' + MENU_ID,
@@ -625,7 +650,7 @@ width: 5rem;
 padding: 0;
 margin-left: auto
 }
-${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0}
+${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0; text-align: end}
 ${m+i} {outline: none}
 ${m+d+d+d}:focus-within > label, ${m} .check-cont:focus-within > label {${underline}}
 ${m} .check-cont {padding: 0 1rem}
