@@ -545,11 +545,8 @@ document.addEventListener('keyup', e => {
 	if (e.shiftKey) {
 		setting = QUALITY;
 	} else {
-		let value = channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed);
-		if (value) {
-			setCustomSpeed(+value);
-			return;
-		}
+		const value = channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed);
+		if (value) return setCustomSpeed(+value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
