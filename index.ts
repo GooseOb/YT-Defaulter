@@ -81,6 +81,15 @@ const cfg: ScriptCfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
 		standardMusicSpeed: false
 	}
 };
+const isDescendantOrTheSame = (child: Element, parents: ParentNode[]): boolean => {
+	if (parents.includes(child)) return true;
+	let node = child.parentNode as Element;
+	while (node !== null) {
+		if (parents.includes(node)) return true;
+		node = node.parentNode as Element;
+	}
+	return false;
+}
 const copyObj = <T extends object>(obj: T): T => Object.assign({}, obj);
 const saveCfg = () => {
 	const cfgCopy = copyObj(cfg);
@@ -376,8 +385,8 @@ const onPageChange = async () => {
 		closeListener: {
 			onClick(e: Event) {
 				const el = e.target as HTMLElement;
-				if (el === menu || el.closest('#' + MENU_ID)) return;
-				menu._close();
+				if (isDescendantOrTheSame(el, [menu, menu.btn])) return;
+				menu.toggle();
 			},
 			onKeyUp(e) {
 				if (e.code !== 'Escape') return;
@@ -605,7 +614,7 @@ document.addEventListener('keyup', e => {
 	e.preventDefault();
 });
 const listener = () => {
-	if (menu.isOpen) menu.fixPosition();
+	if (menu?.isOpen) menu.fixPosition();
 };
 window.addEventListener('scroll', listener);
 window.addEventListener('resize', listener);

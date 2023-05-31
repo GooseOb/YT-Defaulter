@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.3
+// @version      1.6.4
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -58,6 +58,17 @@ const cfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
 		copySubs: false,
 		standardMusicSpeed: false
 	}
+};
+const isDescendantOrTheSame = (child, parents) => {
+	if (parents.includes(child))
+		return true;
+	let node = child.parentNode;
+	while (node !== null) {
+		if (parents.includes(node))
+			return true;
+		node = node.parentNode;
+	}
+	return false;
 };
 const copyObj = (obj) => Object.assign({}, obj);
 const saveCfg = () => {
@@ -265,9 +276,9 @@ const onPageChange = async () => {
 		closeListener: {
 			onClick(e) {
 				const el = e.target;
-				if (el === menu || el.closest('#' + MENU_ID))
+				if (isDescendantOrTheSame(el, [menu, menu.btn]))
 					return;
-				menu._close();
+				menu.toggle();
 			},
 			onKeyUp(e) {
 				if (e.code !== 'Escape')
@@ -477,7 +488,7 @@ document.addEventListener('keyup', e => {
 	e.preventDefault();
 });
 const listener = () => {
-	if (menu.isOpen)
+	if (menu?.isOpen)
 		menu.fixPosition();
 };
 window.addEventListener('scroll', listener);
