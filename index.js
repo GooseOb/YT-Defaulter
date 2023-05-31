@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.1
+// @version      1.6.2
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -10,7 +10,7 @@
 // ==/UserScript==
 
 (function(){
-const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', CONT_ID = PREFIX + 'cont', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', CUSTOM_SPEED_HINT_CLASS = PREFIX + 'custom-speed-hint', SUBTITLES = 'subtitles', SPEED = 'speed', CUSTOM_SPEED = 'customSpeed', QUALITY = 'quality';
+const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', CUSTOM_SPEED_HINT_CLASS = PREFIX + 'custom-speed-hint', SUBTITLES = 'subtitles', SPEED = 'speed', CUSTOM_SPEED = 'customSpeed', QUALITY = 'quality';
 const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
@@ -129,9 +129,7 @@ const until = (getItem, check, msToWait = 10000, msReqTimeout = 20) => new Promi
 	};
 });
 const untilAppear = (getItem, msToWait) => until(getItem, Boolean, msToWait);
-let channelCfg, channelName;
-let isTheSameChannel = true;
-let video;
+let channelCfg, channelName, isTheSameChannel = true, video, ytMenu, ytSettingItems, menu, menuWidth, menuBtn, SPEED_NORMAL, isSpeedChanged = false;
 const $ = (id) => document.getElementById(id);
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
 const getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*\/@/, '');
@@ -144,8 +142,6 @@ const isMusicChannel = async () => {
 	return !!el.querySelector('.badge-style-type-verified-artist');
 };
 const addValueSetter = (el, setValue, setting) => Object.assign(el, { setValue, setting }), getElCreator = (tag) => (props) => Object.assign(document.createElement(tag), props);
-let ytMenu, ytSettingItems, SPEED_NORMAL, menuCont;
-let isSpeedChanged = false;
 const comparators = {
 	[QUALITY]: (value, current) => +value >= parseInt(current),
 	[SPEED]: (value, current) => value === current
@@ -178,9 +174,9 @@ function setSubtitlesValue(value) {
 }
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
-	if (menuCont) {
+	if (menuBtn) {
 		isTheSameChannel = channelName === name;
-		menuCont.style.display = isTheSameChannel ? 'block' : 'none';
+		menuBtn.style.display = isTheSameChannel ? 'flex' : 'none';
 	}
 	else
 		channelName = name;
@@ -215,7 +211,7 @@ const onPageChange = async () => {
 		ytMenu.close();
 	});
 	const getMenuItems = () => ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]');
-	const menuItemArr = Array.from(await until(getMenuItems, arr => arr.length));
+	const menuItemArr = Array.from(await until(getMenuItems, arr => !!arr.length));
 	const areSubtitles = menuItemArr.length === 3;
 	ytSettingItems = {
 		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
@@ -250,26 +246,25 @@ const onPageChange = async () => {
 		video ||= plr.querySelector('.html5-main-video');
 		setCustomSpeed(customSpeed);
 	}
-	if (menuCont)
+	if (menu)
 		return;
 	const div = getElCreator('div'), input = getElCreator('input'), checkbox = (props) => input({ type: 'checkbox', ...props }), option = getElCreator('option'), _label = getElCreator('label'), labelEl = (forId, props) => {
 		const elem = _label(props);
 		elem.setAttribute('for', forId);
 		return elem;
-	}, btnClass = 'yt-spec-button-shape-next', _button = getElCreator('button'), button = (text, props) => _button(Object.assign({
+	}, selectEl = getElCreator('select'), btnClass = 'yt-spec-button-shape-next', _button = getElCreator('button'), button = (text, props) => _button(Object.assign({
 		textContent: text,
 		className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
 		onfocus() { this.classList.add(btnClass + '--focused'); },
 		onblur() { this.classList.remove(btnClass + '--focused'); }
 	}, props));
-	menuCont = div({ id: CONT_ID });
-	const menu = div({
+	menu = div({
 		id: MENU_ID,
 		isOpen: false,
 		closeListener: {
 			listener(e) {
 				const el = e.target;
-				if (el === menu || el.closest('#' + menu.id))
+				if (el === menu || el.closest('#' + MENU_ID))
 					return;
 				menu.toggle();
 			},
@@ -326,7 +321,7 @@ const onPageChange = async () => {
 		})));
 		const speedValues = ['2', '1.75', '1.5', '1.25', SPEED_NORMAL, '0.75', '0.5', '0.25'];
 		const qualityValues = ['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'];
-		const addSelectItem = (name, label, options, getText) => addItem(name, label, getElCreator('select')({ value: text.DEFAULT }))
+		const addSelectItem = (name, label, options, getText) => addItem(name, label, selectEl({ value: text.DEFAULT }))
 			.elem.append(...toOptions(options, getText));
 		section.append(getElCreator('span')({ textContent: title, id: sectionId }));
 		const customSpeedHint = div({
@@ -382,20 +377,20 @@ const onPageChange = async () => {
 	for (const key in iconStyle)
 		settingsIcon.setAttribute(key, iconStyle[key]);
 	settingsIcon.append($('settings'));
-	const btn = button('', {
+	menuBtn = button('', {
 		id: BTN_ID,
 		ariaLabel: text.OPEN_SETTINGS,
 		tabIndex: 0,
 		onclick() { menu.toggle(); }
 	});
-	btn.setAttribute('aria-controls', MENU_ID);
-	btn.classList.add(btnClass + '--icon-button');
-	btn.append(settingsIcon);
-	menuCont.append(btn);
+	menuBtn.setAttribute('aria-controls', MENU_ID);
+	menuBtn.classList.add(btnClass + '--icon-button');
+	menuBtn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menuCont, actionsBar.lastChild);
-	menu.style.top = (btn.offsetHeight + 10) + 'px';
-	menuCont.append(menu);
+	actionsBar.insertBefore(menuBtn, actionsBar.lastChild);
+	document.querySelector('ytd-popup-container').append(menu);
+	menuWidth = menu.getBoundingClientRect().width;
+	fixMenuPosition();
 };
 let lastHref;
 setInterval(() => {
@@ -445,11 +440,9 @@ document.addEventListener('keyup', e => {
 		setting = QUALITY;
 	}
 	else {
-		let value = channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed);
-		if (value) {
-			setCustomSpeed(+value);
-			return;
-		}
+		const value = channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed);
+		if (value)
+			return setCustomSpeed(+value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
@@ -458,20 +451,23 @@ document.addEventListener('keyup', e => {
 	e.stopPropagation();
 	e.preventDefault();
 });
+const fixMenuPosition = () => {
+	const { y, height, width, left } = menuBtn.getBoundingClientRect();
+	menu.style.top = y + height + 8 + 'px';
+	menu.style.left = left + width - menuWidth + 'px';
+};
+document.addEventListener('scroll', fixMenuPosition);
+document.addEventListener('resize', fixMenuPosition);
 const m = '#' + MENU_ID, d = ' div', i = ' input', s = ' select', bg = 'var(--yt-spec-menu-background)', underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
 document.head.append(getElCreator('style')({ textContent: `
-#${CONT_ID} {
-color: var(--yt-spec-text-primary);
-position: relative;
-font-size: 14px
-}
-#${BTN_ID} {margin-left: 8px}
+#${BTN_ID} {position: relative; margin-left: 8px}
 ${m} {
 display: flex;
 visibility: hidden;
+color: var(--yt-spec-text-primary);
+font-size: 14px;
 flex-direction: column;
-position: absolute;
-right: 0;
+position: fixed;
 background: ${bg};
 border-radius: 2rem;
 padding: 1rem;

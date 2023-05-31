@@ -6,7 +6,6 @@ const
 	SECTION_GLOBAL = 'global',
 	SECTION_LOCAL = 'thisChannel',
 	PREFIX = 'YTDef-',
-	CONT_ID = PREFIX + 'cont',
 	MENU_ID = PREFIX + 'menu',
 	BTN_ID = PREFIX + 'btn',
 	CUSTOM_SPEED_HINT_CLASS = PREFIX + 'custom-speed-hint',
@@ -141,7 +140,7 @@ const restoreFocusAfter = (cb: () => void) => {
 
 const until = <TGetter extends AnyFn>(
 	getItem: TGetter,
-	check: (item: any) => boolean,
+	check: (item: ReturnType<TGetter>) => boolean,
 	msToWait = 10_000,
 	msReqTimeout = 20
 ) => new Promise<ReturnType<TGetter>>((res, rej) => {
@@ -162,9 +161,32 @@ const until = <TGetter extends AnyFn>(
 const untilAppear = <TGetter extends AnyFn>(getItem: TGetter, msToWait?: number) =>
 	until(getItem, Boolean, msToWait);
 
-let channelCfg: Cfg, channelName: string;
-let isTheSameChannel = true;
-let video: HTMLVideoElement;
+type Menu = HTMLDivElement & {
+	isOpen: boolean,
+	closeListener: {
+		listener(e: Event): void,
+		add(): void,
+		remove(): void
+	},
+	toggle(): void
+};
+
+let
+	channelCfg: Cfg,
+	channelName: string,
+
+	isTheSameChannel = true,
+	video: HTMLVideoElement,
+
+	ytMenu: YtMenu,
+	ytSettingItems: YtSettingItems,
+
+	menu: Menu,
+	menuWidth: number,
+	menuBtn: HTMLButtonElement,
+
+	SPEED_NORMAL: string,
+	isSpeedChanged = false;
 
 const $ = (id: string) => document.getElementById(id);
 
@@ -195,16 +217,17 @@ type YtMenuApi = {
 };
 type YtMenu = HTMLElement & YtMenuApi;
 type ValueSetter = (value: string | boolean) => void;
-type YtSettingItem = HTMLButtonElement & {setValue: ValueSetter, setting: YTSetting};
+type YtSettingItemElem = HTMLDivElement;
+type YtSettingItem = YtSettingItemElem & {setValue: ValueSetter, setting: YTSetting};
 type YtSettingItems = Partial<Record<YTSetting, YtSettingItem>>;
 
+
+type Props<T extends HTMLElement> = Partial<T> & object;
 const
 	addValueSetter = <TElem extends HTMLElement>(el: TElem, setValue: ValueSetter, setting: YTSetting) =>
 		Object.assign(el, {setValue, setting}),
-	getElCreator = <TElem extends HTMLElement>(tag: string) =>
-		<TProps extends Partial<TElem> & object>(props?: TProps) => Object.assign(document.createElement(tag) as TElem, props);
-let ytMenu: YtMenu, ytSettingItems: YtSettingItems, SPEED_NORMAL: string, menuCont: HTMLElement;
-let isSpeedChanged = false;
+	getElCreator = <TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
+		<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) => Object.assign(document.createElement(tag), props);
 const comparators = {
 	[QUALITY]: (value: string, current: string) => +value >= parseInt(current),
 	[SPEED]: (value: string, current: string) => value === current
@@ -237,9 +260,9 @@ function setSubtitlesValue(value: boolean) {
 }
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
-	if (menuCont) {
+	if (menuBtn) {
 		isTheSameChannel = channelName === name;
-		menuCont.style.display = isTheSameChannel ? 'block' : 'none';
+		menuBtn.style.display = isTheSameChannel ? 'flex' : 'none';
 	} else channelName = name;
 };
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
@@ -274,10 +297,11 @@ const onPageChange = async () => {
 		ytMenu.open();
 		ytMenu.close();
 	});
-	const getMenuItems = () => ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]');
+	const getMenuItems = () =>
+		ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]') as NodeListOf<YtSettingItemElem>;
 	const menuItemArr = Array.from(
-		await until(getMenuItems, arr => arr.length)
-	) as HTMLButtonElement[];
+		await until(getMenuItems, arr => !!arr.length)
+	);
 	const areSubtitles = menuItemArr.length === 3;
 	ytSettingItems = {
 		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
@@ -319,37 +343,35 @@ const onPageChange = async () => {
 
 	/* ---------------------- settings menu ---------------------- */
 
-	if (menuCont) return;
-
-	type Props<T extends HTMLElement> = Partial<T> & object;
+	if (menu) return;
 
 	const
-		div = getElCreator<HTMLDivElement>('div'),
-		input = getElCreator<HTMLInputElement>('input'),
+		div = getElCreator('div'),
+		input = getElCreator('input'),
 		checkbox = <T extends Props<HTMLInputElement>>(props?: T) => input({type: 'checkbox', ...props}),
-		option = getElCreator<HTMLOptionElement>('option'),
-		_label = getElCreator<HTMLLabelElement>('label'),
+		option = getElCreator('option'),
+		_label = getElCreator('label'),
 		labelEl = <T extends Props<HTMLLabelElement>>(forId: string, props?: T) => {
 			const elem = _label(props);
 			elem.setAttribute('for', forId);
 			return elem;
 		},
+		selectEl = getElCreator('select'),
 		btnClass = 'yt-spec-button-shape-next',
-		_button = getElCreator<HTMLButtonElement>('button'),
+		_button = getElCreator('button'),
 		button = <T extends Props<HTMLButtonElement>>(text: string, props?: T) => _button(Object.assign({
 			textContent: text,
 			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
 			onfocus() {this.classList.add(btnClass + '--focused')},
 			onblur() {this.classList.remove(btnClass + '--focused')}
 		}, props));
-	menuCont = div({id: CONT_ID});
-	const menu = div({
+	menu = div({
 		id: MENU_ID,
 		isOpen: false,
 		closeListener: {
 			listener(e: Event) {
 				const el = e.target as HTMLElement;
-				if (el === menu || el.closest('#' + menu.id)) return;
+				if (el === menu || el.closest('#' + MENU_ID)) return;
 				menu.toggle();
 			},
 			add() {document.addEventListener('click', this.listener)},
@@ -413,10 +435,10 @@ const onPageChange = async () => {
 
 		type AddSelectItem = (name: Setting, text: string, ...args: Parameters<ToOptions>) => void;
 		const addSelectItem: AddSelectItem = (name, label, options, getText) =>
-			addItem(name, label, getElCreator<HTMLSelectElement>('select')({value: text.DEFAULT}))
+			addItem(name, label, selectEl({value: text.DEFAULT}))
 				.elem.append(...toOptions(options, getText));
 
-		section.append(getElCreator<HTMLSpanElement>('span')({textContent: title, id: sectionId}));
+		section.append(getElCreator('span')({textContent: title, id: sectionId}));
 		const customSpeedHint = div({
 			className: CUSTOM_SPEED_HINT_CLASS,
 			textContent: text.CUSTOM_SPEED_HINT,
@@ -485,20 +507,20 @@ const onPageChange = async () => {
 	};
 	for (const key in iconStyle) settingsIcon.setAttribute(key, iconStyle[key as keyof typeof iconStyle]);
 	settingsIcon.append($('settings'));
-	const btn = button('', {
+	menuBtn = button('', {
 		id: BTN_ID,
 		ariaLabel: text.OPEN_SETTINGS,
 		tabIndex: 0,
 		onclick() {menu.toggle()}
 	});
-	btn.setAttribute('aria-controls', MENU_ID);
-	btn.classList.add(btnClass + '--icon-button');
-	btn.append(settingsIcon);
-	menuCont.append(btn);
+	menuBtn.setAttribute('aria-controls', MENU_ID);
+	menuBtn.classList.add(btnClass + '--icon-button');
+	menuBtn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menuCont, actionsBar.lastChild);
-	menu.style.top = (btn.offsetHeight + 10) + 'px';
-	menuCont.append(menu);
+	actionsBar.insertBefore(menuBtn, actionsBar.lastChild);
+	document.querySelector('ytd-popup-container').append(menu);
+	menuWidth = menu.getBoundingClientRect().width;
+	fixMenuPosition();
 };
 
 let lastHref: string;
@@ -555,25 +577,28 @@ document.addEventListener('keyup', e => {
 	e.stopPropagation();
 	e.preventDefault();
 });
+const fixMenuPosition = () => {
+	const { y, height, width, left } = menuBtn.getBoundingClientRect();
+	menu.style.top = y + height + 8 + 'px';
+	menu.style.left = left + width - menuWidth + 'px';
+};
+document.addEventListener('scroll', fixMenuPosition);
+document.addEventListener('resize', fixMenuPosition);
 
 const
 	m = '#' + MENU_ID,
 	d = ' div', i = ' input', s = ' select', bg = 'var(--yt-spec-menu-background)',
 	underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
 
-document.head.append(getElCreator<HTMLStyleElement>('style')({textContent:`
-#${CONT_ID} {
-color: var(--yt-spec-text-primary);
-position: relative;
-font-size: 14px
-}
-#${BTN_ID} {margin-left: 8px}
+document.head.append(getElCreator('style')({textContent:`
+#${BTN_ID} {position: relative; margin-left: 8px}
 ${m} {
 display: flex;
 visibility: hidden;
+color: var(--yt-spec-text-primary);
+font-size: 14px;
 flex-direction: column;
-position: absolute;
-right: 0;
+position: fixed;
 background: ${bg};
 border-radius: 2rem;
 padding: 1rem;
