@@ -124,16 +124,16 @@ if (cfg._v !== STORAGE_VERSION)  {
 	saveCfg();
 }
 
-function debounce(callback: AnyFn, delay: number): AnyFn {
+function debounce<T extends AnyFn>(callback: T, delay: number) {
 	let timeout: number;
-	return function(...args) {
+	return function(...args: Parameters<T>) {
 		clearTimeout(timeout);
 		timeout = window.setTimeout(() => {
 			callback.apply(this, args);
 		}, delay);
 	};
 }
-const restoreFocusAfter = (cb: AnyFn) => {
+const restoreFocusAfter = (cb: () => void) => {
 	const el = document.activeElement as HTMLElement;
 	cb();
 	el.focus();
@@ -153,7 +153,7 @@ const until = <TGetter extends AnyFn>(
 		if (!check(item)) return;
 		exit(() => res(item));
 	}, msReqTimeout);
-	const exit = (cb: AnyFn) => {
+	const exit = (cb: () => void) => {
 		clearInterval(interval);
 		cb();
 	};
@@ -467,7 +467,9 @@ const onPageChange = async () => {
 		checkboxDiv('copy-subs', 'copySubs', text.COPY_SUBS),
 		checkboxDiv('standard-music-speed', 'standardMusicSpeed', text.STANDARD_MUSIC_SPEED),
 		button(text.SAVE, {
-			setTextDefer: debounce(function(text) {this.textContent = text}, 1000),
+			setTextDefer: debounce(function(text: string) {
+				this.textContent = text
+			}, 1000),
 			onclick() {
 				saveCfg();
 				(this as HTMLButtonElement).textContent = text.SAVED;
