@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.4
+// @version      1.6.5
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -471,6 +471,8 @@ document.addEventListener('keyup', e => {
 	}
 	if (e.code !== 'Space')
 		return;
+	e.stopPropagation();
+	e.preventDefault();
 	let setting;
 	if (e.shiftKey) {
 		setting = QUALITY;
@@ -484,8 +486,6 @@ document.addEventListener('keyup', e => {
 	restoreFocusAfter(() => {
 		ytSettingItems[setting].setValue(getCfgValue(setting));
 	});
-	e.stopPropagation();
-	e.preventDefault();
 });
 const listener = () => {
 	if (menu?.isOpen)

@@ -599,6 +599,8 @@ document.addEventListener('keyup', e => {
 		return;
 	}
 	if (e.code !== 'Space') return;
+	e.stopPropagation();
+	e.preventDefault();
 	let setting: YTSetting;
 	if (e.shiftKey) {
 		setting = QUALITY;
@@ -610,8 +612,6 @@ document.addEventListener('keyup', e => {
 	restoreFocusAfter(() => {
 		ytSettingItems[setting].setValue(getCfgValue(setting));
 	});
-	e.stopPropagation();
-	e.preventDefault();
 });
 const listener = () => {
 	if (menu?.isOpen) menu.fixPosition();
