@@ -1,5 +1,3 @@
-type AnyFn = (...args: any[]) => any;
-
 const
 	STORAGE_NAME = 'YTDefaulter',
 	STORAGE_VERSION = 4,
@@ -132,7 +130,7 @@ if (cfg._v !== STORAGE_VERSION)  {
 	saveCfg();
 }
 
-function debounce<T extends AnyFn>(callback: T, delay: number) {
+function debounce<T extends (...args: any[]) => any>(callback: T, delay: number) {
 	let timeout: number;
 	return function(...args: Parameters<T>) {
 		clearTimeout(timeout);
@@ -147,7 +145,7 @@ const restoreFocusAfter = (cb: () => void) => {
 	el.focus();
 };
 
-const until = <TGetter extends AnyFn>(
+const until = <TGetter extends () => any>(
 	getItem: TGetter,
 	check: (item: ReturnType<TGetter>) => boolean,
 	msToWait = 10_000,
@@ -167,7 +165,7 @@ const until = <TGetter extends AnyFn>(
 	};
 });
 
-const untilAppear = <TGetter extends AnyFn>(getItem: TGetter, msToWait?: number) =>
+const untilAppear = <TGetter extends () => any>(getItem: TGetter, msToWait?: number) =>
 	until(getItem, Boolean, msToWait);
 
 type Menu = HTMLDivElement & {
