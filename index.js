@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.5
+// @version      1.6.6
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -242,10 +242,21 @@ const onPageChange = async () => {
 			}
 			ytMenu.close();
 		});
-	const doNotChangeSpeed = cfg.global.speed && cfg.flags.standardMusicSpeed && (await isMusicChannel());
-	const settings = Object.assign({}, cfg.global, doNotChangeSpeed && { [SPEED]: SPEED_NORMAL }, isTheSameChannel && channelCfg);
-	const customSpeed = +(channelCfg?.customSpeed ||
-		(channelCfg?.speed ? NaN : (cfg.global.customSpeed || NaN)));
+	const doNotChangeSpeed = cfg.flags.standardMusicSpeed && (await isMusicChannel());
+	const settings = Object.assign({}, cfg.global, isTheSameChannel && channelCfg);
+	if (isTheSameChannel) {
+		const isChannelSpeed = 'speed' in channelCfg;
+		const isChannelCustomSpeed = 'customSpeed' in channelCfg;
+		if (isChannelCustomSpeed && isChannelSpeed || doNotChangeSpeed)
+			delete settings.customSpeed;
+		if (doNotChangeSpeed && !isChannelSpeed)
+			delete settings.speed;
+	}
+	else if (doNotChangeSpeed) {
+		delete settings.speed;
+		delete settings.customSpeed;
+	}
+	const customSpeed = +settings.customSpeed;
 	delete settings.customSpeed;
 	isSpeedChanged = false;
 	restoreFocusAfter(() => {

@@ -185,7 +185,7 @@ type Menu = HTMLDivElement & {
 };
 
 let
-	channelCfg: Cfg,
+	channelCfg: Partial<Cfg>,
 	channelName: string,
 
 	isTheSameChannel = true,
@@ -332,14 +332,22 @@ const onPageChange = async () => {
 		}
 		ytMenu.close();
 	});
-	const doNotChangeSpeed = cfg.global.speed && cfg.flags.standardMusicSpeed && (await isMusicChannel());
+	const doNotChangeSpeed = cfg.flags.standardMusicSpeed && (await isMusicChannel());
 	const settings = Object.assign({},
-		cfg.global,
-		doNotChangeSpeed && {[SPEED]: SPEED_NORMAL},
-		isTheSameChannel && channelCfg
+		cfg.global, isTheSameChannel && channelCfg
 	);
-	const customSpeed = +(channelCfg?.customSpeed ||
-		(channelCfg?.speed ? NaN : (cfg.global.customSpeed || NaN)));
+	if (isTheSameChannel) {
+		const isChannelSpeed = 'speed' in channelCfg;
+		const isChannelCustomSpeed = 'customSpeed' in channelCfg;
+		if (isChannelCustomSpeed && isChannelSpeed || doNotChangeSpeed)
+			delete settings.customSpeed;
+		if (doNotChangeSpeed && !isChannelSpeed)
+			delete settings.speed;
+	} else if (doNotChangeSpeed) {
+		delete settings.speed;
+		delete settings.customSpeed;
+	}
+	const customSpeed = +settings.customSpeed;
 	delete settings.customSpeed;
 	isSpeedChanged = false;
 	restoreFocusAfter(() => {
