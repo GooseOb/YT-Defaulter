@@ -589,7 +589,7 @@ const onClick = (e: Event) => {
 };
 
 const getCfgValue = (key: Setting) =>
-	(isTheSameChannel && channelCfg?.[key]) || cfg.global[key];
+	isTheSameChannel ? channelCfg?.[key] : cfg.global[key];
 
 document.addEventListener('click', onClick, {capture: true});
 document.addEventListener('keyup', e => {
@@ -611,7 +611,9 @@ document.addEventListener('keyup', e => {
 	if (e.shiftKey) {
 		setting = QUALITY;
 	} else {
-		const value = channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed);
+		const value = isTheSameChannel
+			? channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed)
+			: cfg.global.customSpeed;
 		if (value) return setCustomSpeed(+value);
 		setting = SPEED;
 	}
