@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.6
+// @version      1.6.6.1
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -247,7 +247,7 @@ const onPageChange = async () => {
 	if (isTheSameChannel) {
 		const isChannelSpeed = 'speed' in channelCfg;
 		const isChannelCustomSpeed = 'customSpeed' in channelCfg;
-		if (isChannelCustomSpeed && isChannelSpeed || doNotChangeSpeed)
+		if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
 			delete settings.customSpeed;
 		if (doNotChangeSpeed && !isChannelSpeed)
 			delete settings.speed;

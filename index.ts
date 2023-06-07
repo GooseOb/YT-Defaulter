@@ -339,7 +339,7 @@ const onPageChange = async () => {
 	if (isTheSameChannel) {
 		const isChannelSpeed = 'speed' in channelCfg;
 		const isChannelCustomSpeed = 'customSpeed' in channelCfg;
-		if (isChannelCustomSpeed && isChannelSpeed || doNotChangeSpeed)
+		if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
 			delete settings.customSpeed;
 		if (doNotChangeSpeed && !isChannelSpeed)
 			delete settings.speed;
