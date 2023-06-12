@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.6.2
+// @version      1.6.7
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -10,7 +10,7 @@
 // ==/UserScript==
 
 (function(){
-const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', CUSTOM_SPEED_HINT_CLASS = PREFIX + 'custom-speed-hint', SUBTITLES = 'subtitles', SPEED = 'speed', CUSTOM_SPEED = 'customSpeed', QUALITY = 'quality';
+const STORAGE_NAME = 'YTDefaulter', STORAGE_VERSION = 4, SECTION_GLOBAL = 'global', SECTION_LOCAL = 'thisChannel', PREFIX = 'YTDef-', MENU_ID = PREFIX + 'menu', BTN_ID = PREFIX + 'btn', SETTING_HINT_CLASS = PREFIX + 'setting-hint', SUBTITLES = 'subtitles', SPEED = 'speed', CUSTOM_SPEED = 'customSpeed', QUALITY = 'quality', VOLUME = 'volume';
 const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
@@ -18,6 +18,7 @@ const text = {
 	CUSTOM_SPEED: 'Custom speed',
 	CUSTOM_SPEED_HINT: 'If defined, will be used instead of "speed"',
 	QUALITY: 'Quality',
+	VOLUME: 'Volume, %',
 	GLOBAL: 'global',
 	LOCAL: 'this channel',
 	SHORTS: 'Open shorts as a usual video',
@@ -36,6 +37,7 @@ const translations = {
 		CUSTOM_SPEED: 'Свая хуткасьць',
 		CUSTOM_SPEED_HINT: 'Калі вызначана, будзе выкарыстоўвацца замест "хуткасьць"',
 		QUALITY: 'Якасьць',
+		VOLUME: 'Гучнасьць, %',
 		GLOBAL: 'глябальна',
 		LOCAL: 'гэты канал',
 		SHORTS: 'Адкрываць shorts як звычайныя',
@@ -140,10 +142,11 @@ const until = (getItem, check, msToWait = 10000, msReqTimeout = 20) => new Promi
 	};
 });
 const untilAppear = (getItem, msToWait) => until(getItem, Boolean, msToWait);
-let channelCfg, channelName, isTheSameChannel = true, video, ytMenu, ytSettingItems, menu, SPEED_NORMAL, isSpeedChanged = false;
+const ytSettingItems = {};
+let channelCfg, channelName, isTheSameChannel = true, video, subtitlesBtn, muteBtn, ytMenu, menu, SPEED_NORMAL, isSpeedChanged = false;
 const $ = (id) => document.getElementById(id);
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
-const getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*\/@/, '');
+const getChannelUsername = () => (document.querySelector('span[itemprop="author"] > link[itemprop="url"]'))?.href.replace(/.*\/@/, '');
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
 const getActionsBar = () => $('actions')?.querySelector('ytd-menu-renderer');
@@ -152,37 +155,76 @@ const isMusicChannel = async () => {
 	const el = await untilAppear(getAboveTheFold);
 	return !!el.querySelector('.badge-style-type-verified-artist');
 };
-const addValueSetter = (el, setValue, setting) => Object.assign(el, { setValue, setting }), getElCreator = (tag) => (props) => Object.assign(document.createElement(tag), props);
+const validateVolume = (value) => {
+	const num = +value;
+	if (num < 0 || num > 100)
+		throw 'out of range';
+	if (isNaN(num))
+		throw 'not a number';
+};
+const getElCreator = (tag) => (props) => Object.assign(document.createElement(tag), props);
 const comparators = {
 	[QUALITY]: (value, current) => +value >= parseInt(current),
 	[SPEED]: (value, current) => value === current
 };
-function setValue(value) {
-	const compare = comparators[this.setting];
-	for (const btn of ytMenu.openItem(this))
-		if (compare(value, btn.textContent)) {
-			btn.click();
-			break;
-		}
-	ytMenu.close();
-}
-const setCustomSpeed = (value) => {
-	try {
-		video.playbackRate = isSpeedChanged ? 1 : value;
-		isSpeedChanged = !isSpeedChanged;
-	}
-	catch {
-		throw 'Custom speed value is out of range';
+const logger = {
+	prefix: '[YT-Defaulter]',
+	err(...msgs) {
+		console.error(this.prefix, ...msgs);
+	},
+	outOfRange(what) {
+		this.err(what, 'value is out of range');
 	}
 };
-function setSpeedValue(value) {
-	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value]);
-	isSpeedChanged = !isSpeedChanged;
-}
-function setSubtitlesValue(value) {
-	if (this.ariaPressed !== value.toString())
-		this.click();
-}
+const valueSetters = {
+	_ytSettingItem(value, settingName) {
+		const compare = comparators[settingName];
+		for (const btn of ytMenu.openItem(ytSettingItems[settingName]))
+			if (compare(value, btn.textContent)) {
+				btn.click();
+				break;
+			}
+		ytMenu.close();
+	},
+	speed(value) {
+		this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, SPEED);
+		isSpeedChanged = !isSpeedChanged;
+	},
+	customSpeed(value) {
+		try {
+			video.playbackRate = isSpeedChanged ? 1 : +value;
+		}
+		catch {
+			return logger.outOfRange('Custom speed');
+		}
+		isSpeedChanged = !isSpeedChanged;
+	},
+	subtitles(value) {
+		if (subtitlesBtn.ariaPressed !== value.toString())
+			subtitlesBtn.click();
+	},
+	volume(value) {
+		const num = +value;
+		muteBtn ||= document.querySelector('.ytp-mute-button');
+		const isMuted = muteBtn.dataset.titleNoTooltip !== 'Mute';
+		if (num === 0) {
+			if (!isMuted)
+				muteBtn.click();
+			return;
+		}
+		if (isMuted)
+			muteBtn.click();
+		try {
+			video.volume = num / 100;
+		}
+		catch {
+			logger.outOfRange('Volume');
+		}
+	},
+	quality(value) {
+		this._ytSettingItem(value, QUALITY);
+	}
+};
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menu.btn) {
@@ -223,16 +265,13 @@ const onPageChange = async () => {
 	});
 	const getMenuItems = () => ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]');
 	const menuItemArr = Array.from(await until(getMenuItems, arr => !!arr.length));
-	const areSubtitles = menuItemArr.length === 3;
-	ytSettingItems = {
-		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
-		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue, SPEED)
-	};
-	if (areSubtitles)
-		ytSettingItems[SUBTITLES] = addValueSetter(plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue, SUBTITLES);
+	Object.assign(ytSettingItems, {
+		quality: menuItemArr.at(-1),
+		speed: menuItemArr[0]
+	});
 	if (!SPEED_NORMAL)
 		restoreFocusAfter(() => {
-			const labels = ytMenu.openItem(ytSettingItems[SPEED]);
+			const labels = ytMenu.openItem(ytSettingItems.speed);
 			for (const label of labels) {
 				const text = label.textContent;
 				if (!+text) {
@@ -256,17 +295,18 @@ const onPageChange = async () => {
 		delete settings.speed;
 		delete settings.customSpeed;
 	}
-	const customSpeed = +settings.customSpeed;
+	const { customSpeed } = settings;
 	delete settings.customSpeed;
 	isSpeedChanged = false;
+	video ||= plr.querySelector('.html5-main-video');
+	subtitlesBtn ||= plr.querySelector('.ytp-subtitles-button');
 	restoreFocusAfter(() => {
 		for (const setting in settings)
-			ytSettingItems[setting].setValue(settings[setting]);
+			valueSetters[setting](settings[setting]);
 	});
-	if (!isNaN(customSpeed)) {
+	if (!isNaN(+customSpeed)) {
 		isSpeedChanged = false;
-		video ||= plr.querySelector('.html5-main-video');
-		setCustomSpeed(customSpeed);
+		valueSetters.customSpeed(customSpeed);
 	}
 	if (menu)
 		return;
@@ -363,6 +403,8 @@ const onPageChange = async () => {
 				});
 			item.append(label, elem);
 			section.append(item);
+			if (elem.hint)
+				section.append(elem.hint);
 			return { elem };
 		};
 		const toOptions = (values, getText) => [option({
@@ -377,20 +419,43 @@ const onPageChange = async () => {
 		const addSelectItem = (name, label, options, getText) => addItem(name, label, selectEl({ value: text.DEFAULT }))
 			.elem.append(...toOptions(options, getText));
 		section.append(getElCreator('span')({ textContent: title, id: sectionId }));
-		const customSpeedHint = div({
-			className: CUSTOM_SPEED_HINT_CLASS,
-			textContent: text.CUSTOM_SPEED_HINT,
-			hide() { this.style.display = 'none'; },
-			show() { this.style.display = 'block'; }
-		});
-		customSpeedHint.hide();
+		const createHint = (prefix, props) => {
+			const el = div({
+				className: SETTING_HINT_CLASS,
+				hide() { this.style.display = 'none'; },
+				show(msg) {
+					this.style.display = 'block';
+					if (msg)
+						this.textContent = prefix + msg;
+				},
+				...props
+			});
+			el.hide();
+			return el;
+		};
 		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
 		addItem(CUSTOM_SPEED, text.CUSTOM_SPEED, input({
-			onfocus() { customSpeedHint.show(); },
-			onblur() { customSpeedHint.hide(); }
+			type: 'number',
+			onfocus() { this.hint.show(); },
+			onblur() { this.hint.hide(); },
+			hint: createHint(null, { textContent: text.CUSTOM_SPEED_HINT })
 		}));
-		section.append(customSpeedHint);
 		addSelectItem(QUALITY, text.QUALITY, qualityValues, val => val + 'p');
+		addItem(VOLUME, text.VOLUME, input({
+			type: 'number',
+			min: '0', max: '100',
+			oninput() {
+				settings.volume = this.value;
+				try {
+					validateVolume(this.value);
+					this.hint.hide();
+				}
+				catch (e) {
+					this.hint.show(e);
+				}
+			},
+			hint: createHint('Warning: ')
+		}));
 		addItem(SUBTITLES, text.SUBTITLES, checkbox());
 		return section;
 	};
@@ -493,11 +558,11 @@ document.addEventListener('keyup', e => {
 			? channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed)
 			: cfg.global.customSpeed;
 		if (value)
-			return setCustomSpeed(+value);
+			return valueSetters.customSpeed(value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
-		ytSettingItems[setting].setValue(getCfgValue(setting));
+		valueSetters[setting](getCfgValue(setting));
 	});
 });
 const listener = () => {
@@ -542,7 +607,7 @@ width: 5rem;
 padding: 0;
 margin-left: auto
 }
-${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0; text-align: end}
+${m} .${SETTING_HINT_CLASS} {margin: 0; text-align: end}
 ${m + i} {outline: none}
 ${m + d + d + d}:focus-within > label, ${m} .check-cont:focus-within > label {${underline}}
 ${m} .check-cont {padding: 0 1rem}

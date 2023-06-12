@@ -6,11 +6,12 @@ const
 	PREFIX = 'YTDef-',
 	MENU_ID = PREFIX + 'menu',
 	BTN_ID = PREFIX + 'btn',
-	CUSTOM_SPEED_HINT_CLASS = PREFIX + 'custom-speed-hint',
+	SETTING_HINT_CLASS = PREFIX + 'setting-hint',
 	SUBTITLES = 'subtitles',
 	SPEED = 'speed',
 	CUSTOM_SPEED = 'customSpeed',
-	QUALITY = 'quality';
+	QUALITY = 'quality',
+	VOLUME = 'volume';
 const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
@@ -18,6 +19,7 @@ const text = {
 	CUSTOM_SPEED: 'Custom speed',
 	CUSTOM_SPEED_HINT: 'If defined, will be used instead of "speed"',
 	QUALITY: 'Quality',
+	VOLUME: 'Volume, %',
 	GLOBAL: 'global',
 	LOCAL: 'this channel',
 	SHORTS: 'Open shorts as a usual video',
@@ -38,6 +40,7 @@ const translations: Record<string, Partial<Dict>> = {
 		CUSTOM_SPEED: 'Свая хуткасьць',
 		CUSTOM_SPEED_HINT: 'Калі вызначана, будзе выкарыстоўвацца замест "хуткасьць"',
 		QUALITY: 'Якасьць',
+		VOLUME: 'Гучнасьць, %',
 		GLOBAL: 'глябальна',
 		LOCAL: 'гэты канал',
 		SHORTS: 'Адкрываць shorts як звычайныя',
@@ -54,6 +57,7 @@ type FlagName = 'shortsToUsual' | 'newTab' | 'copySubs' | 'standardMusicSpeed';
 type YTCfg = {
 	speed?: string,
 	quality?: string,
+	volume?: string,
 	subtitles?: boolean
 };
 type Cfg = YTCfg & {
@@ -81,10 +85,10 @@ const cfg: ScriptCfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
 };
 const isDescendantOrTheSame = (child: Element, parents: ParentNode[]): boolean => {
 	if (parents.includes(child)) return true;
-	let node = child.parentNode as Element;
+	let node = child.parentNode;
 	while (node !== null) {
 		if (parents.includes(node)) return true;
-		node = node.parentNode as Element;
+		node = node.parentNode;
 	}
 	return false;
 }
@@ -130,9 +134,9 @@ if (cfg._v !== STORAGE_VERSION)  {
 	saveCfg();
 }
 
-function debounce<T extends (...args: any[]) => any>(callback: T, delay: number) {
+function debounce<T extends (...args: any[]) => any>(callback: T, delay: number): (...args: Parameters<T>) => void {
 	let timeout: number;
-	return function(...args: Parameters<T>) {
+	return function(...args) {
 		clearTimeout(timeout);
 		timeout = window.setTimeout(() => {
 			callback.apply(this, args);
@@ -183,16 +187,18 @@ type Menu = HTMLDivElement & {
 	toggle(): void,
 	fixPosition(): void
 };
-
+const ytSettingItems: YtSettingItems = {};
 let
 	channelCfg: Partial<Cfg>,
 	channelName: string,
 
 	isTheSameChannel = true,
+
 	video: HTMLVideoElement,
+	subtitlesBtn: HTMLButtonElement,
+	muteBtn: HTMLButtonElement,
 
 	ytMenu: YtMenu,
-	ytSettingItems: YtSettingItems,
 
 	menu: Menu,
 
@@ -203,7 +209,7 @@ const $ = (id: string) => document.getElementById(id);
 
 const getChannelName = () => new URLSearchParams(location.search).get('ab_channel');
 const getChannelUsername = () => (
-	document.querySelector('span[itemprop="author"] > link[itemprop="url"]') as HTMLLinkElement
+	document.querySelector<HTMLLinkElement>('span[itemprop="author"] > link[itemprop="url"]')
 )?.href.replace(/.*\/@/, '');
 
 const getPlr = () => $('movie_player');
@@ -227,48 +233,84 @@ type YtMenuApi = {
 	openItem(item: HTMLElement): HTMLElement[]
 };
 type YtMenu = HTMLElement & YtMenuApi;
-type ValueSetter = (value: string | boolean) => void;
-type YtSettingItemElem = HTMLDivElement;
-type YtSettingItem = YtSettingItemElem & {setValue: ValueSetter, setting: YTSetting};
-type YtSettingItems = Partial<Record<YTSetting, YtSettingItem>>;
-
+type YtSettingName = typeof SPEED | typeof QUALITY;
+type YtSettingItem = HTMLDivElement & {role: 'menuitem'};
+type YtSettingItems = Partial<Record<YtSettingName, YtSettingItem>>;
 
 type Props<T extends HTMLElement> = Partial<T> & object;
-const
-	addValueSetter = <TElem extends HTMLElement>(el: TElem, setValue: ValueSetter, setting: YTSetting) =>
-		Object.assign(el, {setValue, setting}),
-	getElCreator = <TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
+const validateVolume = (value: string) => {
+	const num = +value;
+	if (num < 0 || num > 100) throw 'out of range';
+	if (isNaN(num)) throw 'not a number';
+};
+
+const getElCreator = <TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
 		<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) => Object.assign(document.createElement(tag), props);
-const comparators = {
-	[QUALITY]: (value: string, current: string) => +value >= parseInt(current),
-	[SPEED]: (value: string, current: string) => value === current
-} as const;
-function setValue(value: string) {
-	const compare = comparators[this.setting as keyof typeof comparators];
-
-	for (const btn of ytMenu.openItem(this))
-		if (compare(value, btn.textContent)) {
-			btn.click();
-			break;
-		}
-
-	ytMenu.close();
+type Comparator = (value: string, current: string) => boolean;
+const comparators: Record<YtSettingName, Comparator> = {
+	[QUALITY]: (value, current) => +value >= parseInt(current),
+	[SPEED]: (value, current) => value === current
+};
+const logger = {
+	prefix: '[YT-Defaulter]',
+	// log(...msgs: string[]) {
+	// 	console.log(this.prefix, ...msgs);
+	// },
+	err(...msgs: string[]) {
+		console.error(this.prefix, ...msgs);
+	},
+	outOfRange(what: string) {
+		this.err(what, 'value is out of range');
+	}
 }
-const setCustomSpeed = (value: number) => {
-	try {
-		video.playbackRate = isSpeedChanged ? 1 : value;
+type ValueSetterHelpers = {
+	_ytSettingItem(value: string, settingName: YtSettingName): void
+};
+type ValueSetters = {[p in Setting]: (value: Cfg[p]) => void};
+const valueSetters: ValueSetters & ValueSetterHelpers = {
+	_ytSettingItem(value, settingName) {
+		const compare = comparators[settingName];
+		for (const btn of ytMenu.openItem(ytSettingItems[settingName]))
+			if (compare(value, btn.textContent)) {
+				btn.click();
+				break;
+			}
+		ytMenu.close();
+	},
+	speed(value) {
+		this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, SPEED);
 		isSpeedChanged = !isSpeedChanged;
-	} catch {
-		throw 'Custom speed value is out of range';
+	},
+	customSpeed(value) {
+		try {
+			video.playbackRate = isSpeedChanged ? 1 : +value;
+		} catch {
+			return logger.outOfRange('Custom speed');
+		}
+		isSpeedChanged = !isSpeedChanged;
+	},
+	subtitles(value) {
+		if (subtitlesBtn.ariaPressed !== value.toString()) subtitlesBtn.click();
+	},
+	volume(value) {
+		const num = +value;
+		muteBtn ||= document.querySelector<HTMLButtonElement>('.ytp-mute-button');
+		const isMuted = muteBtn.dataset.titleNoTooltip !== 'Mute';
+		if (num === 0) {
+			if (!isMuted) muteBtn.click();
+			return;
+		}
+		if (isMuted) muteBtn.click();
+		try {
+			video.volume = num / 100;
+		} catch {
+			logger.outOfRange('Volume');
+		}
+	},
+	quality(value) {
+		this._ytSettingItem(value, QUALITY);
 	}
 };
-function setSpeedValue(value: string) {
-	setValue.apply(this, [isSpeedChanged ? SPEED_NORMAL : value]);
-	isSpeedChanged = !isSpeedChanged;
-}
-function setSubtitlesValue(value: boolean) {
-	if (this.ariaPressed !== value.toString()) this.click();
-}
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
 	if (menu.btn) {
@@ -309,20 +351,16 @@ const onPageChange = async () => {
 		ytMenu.close();
 	});
 	const getMenuItems = () =>
-		ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]') as NodeListOf<YtSettingItemElem>;
+		ytMenu.querySelectorAll('.ytp-menuitem[role="menuitem"]') as NodeListOf<YtSettingItem>;
 	const menuItemArr = Array.from(
 		await until(getMenuItems, arr => !!arr.length)
 	);
-	const areSubtitles = menuItemArr.length === 3;
-	ytSettingItems = {
-		[QUALITY]: addValueSetter(menuItemArr.at(-1), setValue, QUALITY),
-		[SPEED]: addValueSetter(menuItemArr[0], setSpeedValue, SPEED)
-	};
-	if (areSubtitles) ytSettingItems[SUBTITLES] = addValueSetter(
-		plr.querySelector('.ytp-subtitles-button'), setSubtitlesValue, SUBTITLES
-	);
+	Object.assign(ytSettingItems, {
+		quality: menuItemArr.at(-1),
+		speed: menuItemArr[0]
+	} as YtSettingItems);
 	if (!SPEED_NORMAL) restoreFocusAfter(() => {
-		const labels = ytMenu.openItem(ytSettingItems[SPEED]);
+		const labels = ytMenu.openItem(ytSettingItems.speed);
 		for (const label of labels) {
 			const text = label.textContent;
 			if (!+text) {
@@ -347,17 +385,18 @@ const onPageChange = async () => {
 		delete settings.speed;
 		delete settings.customSpeed;
 	}
-	const customSpeed = +settings.customSpeed;
+	const {customSpeed} = settings;
 	delete settings.customSpeed;
 	isSpeedChanged = false;
+	video ||= plr.querySelector('.html5-main-video');
+	subtitlesBtn ||= plr.querySelector('.ytp-subtitles-button');
 	restoreFocusAfter(() => {
 		for (const setting in settings)
-			ytSettingItems[setting as YTSetting].setValue(settings[setting as YTSetting]);
+			valueSetters[setting as Setting](settings[setting as never]);
 	});
-	if (!isNaN(customSpeed)) {
+	if (!isNaN(+customSpeed)) {
 		isSpeedChanged = false;
-		video ||= plr.querySelector<HTMLVideoElement>('.html5-main-video');
-		setCustomSpeed(customSpeed);
+		valueSetters.customSpeed(customSpeed);
 	}
 
 	/* ---------------------- settings menu ---------------------- */
@@ -437,11 +476,12 @@ const onPageChange = async () => {
 		})
 	});
 
-	const createSection = (sectionId: string, title: string, sectionCfg: Cfg) => {
+	const createSection = (sectionId: string, title: string, sectionCfg: Cfg): HTMLDivElement => {
 		const section = div({role: 'group'});
 		section.setAttribute('aria-labelledby', sectionId);
 		const getLocalId = (name: string) => PREFIX + name + '-' + sectionId;
-		const addItem = <TElem extends HTMLInputElement | HTMLSelectElement>(
+		type Item = (HTMLInputElement | HTMLSelectElement) & {hint?: HTMLElement};
+		const addItem = <TElem extends Item>(
 			name: Setting,
 			innerHTML: string,
 			elem: TElem
@@ -453,10 +493,10 @@ const onPageChange = async () => {
 			Object.assign(elem, {
 				id,
 				name: name,
-				onchange() {
-					const value: string | boolean = (this as any)[valueProp];
+				onchange(this: TElem & {checked: boolean, value: string}) {
+					const value: Cfg[Setting] = this[valueProp];
 					if (value === '' || value === text.DEFAULT) delete sectionCfg[name];
-					else (sectionCfg as any)[name] = value;
+					else sectionCfg[name] = value as never;
 				}
 			} as Partial<HTMLInputElement & HTMLSelectElement>);
 			const cfgValue = sectionCfg[name];
@@ -465,6 +505,7 @@ const onPageChange = async () => {
 			});
 			item.append(label, elem);
 			section.append(item);
+			if (elem.hint) section.append(elem.hint);
 			return {elem};
 		};
 
@@ -487,20 +528,46 @@ const onPageChange = async () => {
 				.elem.append(...toOptions(options, getText));
 
 		section.append(getElCreator('span')({textContent: title, id: sectionId}));
-		const customSpeedHint = div({
-			className: CUSTOM_SPEED_HINT_CLASS,
-			textContent: text.CUSTOM_SPEED_HINT,
-			hide() {this.style.display = 'none'},
-			show() {this.style.display = 'block'}
-		});
-		customSpeedHint.hide();
+		type HintElem = HTMLDivElement & {
+			hide(): void,
+			show(msg?: string): void
+		};
+		type InputWithHint = HTMLInputElement & {hint: HintElem};
+		const createHint = <TProps extends Props<HTMLDivElement>>(prefix: string, props?: TProps) => {
+			const el: HintElem & TProps = div({
+				className: SETTING_HINT_CLASS,
+				hide() {this.style.display = 'none'},
+				show(msg?: string) {
+					this.style.display = 'block'
+					if (msg) this.textContent = prefix + msg;
+				},
+				...props
+			});
+			el.hide();
+			return el;
+		};
 		addSelectItem(SPEED, text.SPEED, speedValues, val => val);
 		addItem(CUSTOM_SPEED, text.CUSTOM_SPEED, input({
-			onfocus() {customSpeedHint.show()},
-			onblur() {customSpeedHint.hide()}
+			type: 'number',
+			onfocus(this: InputWithHint) {this.hint.show()},
+			onblur(this: InputWithHint) {this.hint.hide()},
+			hint: createHint(null, {textContent: text.CUSTOM_SPEED_HINT})
 		}));
-		section.append(customSpeedHint);
 		addSelectItem(QUALITY, text.QUALITY, qualityValues, val => val + 'p');
+		addItem(VOLUME, text.VOLUME, input({
+			type: 'number',
+			min: '0', max: '100',
+			oninput(this: InputWithHint) {
+				settings.volume = this.value;
+				try {
+					validateVolume(this.value);
+					this.hint.hide();
+				} catch(e) {
+					this.hint.show(e);
+				}
+			},
+			hint: createHint('Warning: ')
+		}));
 		addItem(SUBTITLES, text.SUBTITLES, checkbox());
 		return section;
 	};
@@ -510,7 +577,7 @@ const onPageChange = async () => {
 		createSection(SECTION_GLOBAL, text.GLOBAL, cfg.global),
 		createSection(SECTION_LOCAL, text.LOCAL, channelCfg)
 	);
-	const checkboxDiv = (id: string, prop: FlagName, text: string) => {
+	const checkboxDiv = (id: string, prop: FlagName, text: string): HTMLDivElement => {
 		const cont = div({className: 'check-cont'});
 		id = PREFIX + id;
 		cont.append(
@@ -518,12 +585,13 @@ const onPageChange = async () => {
 			checkbox({
 				id,
 				checked: cfg.flags[prop],
-				onclick() {cfg.flags[prop] = (this as HTMLInputElement).checked}
+				onclick(this: HTMLInputElement) {cfg.flags[prop] = this.checked}
 			})
 		);
 		return cont;
 	};
 
+	type SaveButton = Props<HTMLButtonElement> & {setTextDefer: (text: string) => void};
 	menu.append(
 		sections,
 		checkboxDiv('shorts', 'shortsToUsual', text.SHORTS),
@@ -534,12 +602,12 @@ const onPageChange = async () => {
 			setTextDefer: debounce(function(text: string) {
 				this.textContent = text
 			}, 1000),
-			onclick() {
+			onclick(this: SaveButton) {
 				saveCfg();
-				(this as HTMLButtonElement).textContent = text.SAVED;
-				(this as any).setTextDefer(text.SAVE);
+				this.textContent = text.SAVED;
+				this.setTextDefer(text.SAVE);
 			}
-		})
+		} as SaveButton)
 	);
 	menu.addEventListener('keyup', e => {
 		const el = e.target as HTMLInputElement;
@@ -588,7 +656,7 @@ const onClick = (e: Event) => {
 	}
 };
 
-const getCfgValue = (key: Setting) =>
+const getCfgValue = <T extends Setting>(key: T) =>
 	isTheSameChannel ? channelCfg?.[key] : cfg.global[key];
 
 document.addEventListener('click', onClick, {capture: true});
@@ -614,11 +682,11 @@ document.addEventListener('keyup', e => {
 		const value = isTheSameChannel
 			? channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed)
 			: cfg.global.customSpeed;
-		if (value) return setCustomSpeed(+value);
+		if (value) return valueSetters.customSpeed(value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
-		ytSettingItems[setting].setValue(getCfgValue(setting));
+		valueSetters[setting](getCfgValue(setting) as never);
 	});
 });
 const listener = () => {
@@ -667,7 +735,7 @@ width: 5rem;
 padding: 0;
 margin-left: auto
 }
-${m} .${CUSTOM_SPEED_HINT_CLASS} {margin: 0; text-align: end}
+${m} .${SETTING_HINT_CLASS} {margin: 0; text-align: end}
 ${m+i} {outline: none}
 ${m+d+d+d}:focus-within > label, ${m} .check-cont:focus-within > label {${underline}}
 ${m} .check-cont {padding: 0 1rem}
