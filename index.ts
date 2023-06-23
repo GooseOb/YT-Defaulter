@@ -345,7 +345,7 @@ const onPageChange = async () => {
 			item.click();
 			return Array.from(this.querySelectorAll('.ytp-panel-animate-forward .ytp-menuitem-label'));
 		}
-	} as YtMenuApi);
+	} satisfies YtMenuApi);
 	restoreFocusAfter(() => {
 		ytMenu.open();
 		ytMenu.close();
@@ -358,7 +358,7 @@ const onPageChange = async () => {
 	Object.assign(ytSettingItems, {
 		quality: menuItemArr.at(-1),
 		speed: menuItemArr[0]
-	} as YtSettingItems);
+	} satisfies YtSettingItems);
 	if (!SPEED_NORMAL) restoreFocusAfter(() => {
 		const labels = ytMenu.openItem(ytSettingItems.speed);
 		for (const label of labels) {
@@ -498,7 +498,7 @@ const onPageChange = async () => {
 					if (value === '' || value === text.DEFAULT) delete sectionCfg[name];
 					else sectionCfg[name] = value as never;
 				}
-			} as Partial<HTMLInputElement & HTMLSelectElement>);
+			} satisfies Partial<HTMLInputElement & HTMLSelectElement>);
 			const cfgValue = sectionCfg[name];
 			if (cfgValue) setTimeout(() => {
 				(elem as any)[valueProp] = cfgValue;
@@ -656,9 +656,6 @@ const onClick = (e: Event) => {
 	}
 };
 
-const getCfgValue = <T extends Setting>(key: T) =>
-	isTheSameChannel ? channelCfg?.[key] : cfg.global[key];
-
 document.addEventListener('click', onClick, {capture: true});
 document.addEventListener('keyup', e => {
 	if (e.code === 'Enter') return onClick(e);
@@ -679,14 +676,14 @@ document.addEventListener('keyup', e => {
 	if (e.shiftKey) {
 		setting = QUALITY;
 	} else {
-		const value = isTheSameChannel
-			? channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed)
+		const value = (isTheSameChannel && channelCfg)
+			? channelCfg.customSpeed || (!channelCfg.speed && cfg.global.customSpeed)
 			: cfg.global.customSpeed;
 		if (value) return valueSetters.customSpeed(value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
-		valueSetters[setting](getCfgValue(setting) as never);
+		valueSetters[setting]((isTheSameChannel && channelCfg || cfg.global)[setting] as never);
 	});
 });
 const listener = () => {

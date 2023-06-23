@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.7
+// @version      1.6.8
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -530,7 +530,6 @@ const onClick = (e) => {
 		e.stopPropagation();
 	}
 };
-const getCfgValue = (key) => isTheSameChannel ? channelCfg?.[key] : cfg.global[key];
 document.addEventListener('click', onClick, { capture: true });
 document.addEventListener('keyup', e => {
 	if (e.code === 'Enter')
@@ -554,15 +553,15 @@ document.addEventListener('keyup', e => {
 		setting = QUALITY;
 	}
 	else {
-		const value = isTheSameChannel
-			? channelCfg?.customSpeed || (!channelCfg?.speed && cfg.global.customSpeed)
+		const value = (isTheSameChannel && channelCfg)
+			? channelCfg.customSpeed || (!channelCfg.speed && cfg.global.customSpeed)
 			: cfg.global.customSpeed;
 		if (value)
 			return valueSetters.customSpeed(value);
 		setting = SPEED;
 	}
 	restoreFocusAfter(() => {
-		valueSetters[setting](getCfgValue(setting));
+		valueSetters[setting]((isTheSameChannel && channelCfg || cfg.global)[setting]);
 	});
 });
 const listener = () => {
