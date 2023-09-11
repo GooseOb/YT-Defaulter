@@ -4,6 +4,9 @@
     "noImplicitAny": true,
     "target": "es2022",
     "removeComments": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "types": [
+      "bun-types"
+    ]
   }
 }

@@ -1,3 +1,6 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
+
 const STORAGE_NAME = "YTDefaulter",
   STORAGE_VERSION = 4,
   SECTION_GLOBAL = "global",
@@ -12,7 +15,7 @@ const STORAGE_NAME = "YTDefaulter",
   QUALITY = "quality",
   VOLUME = "volume";
 
-type Dict = Record<
+type Dictionary = Record<
   | "OPEN_SETTINGS"
   | "SUBTITLES"
   | "SPEED"
@@ -32,7 +35,7 @@ type Dict = Record<
   string
 >;
 
-const translations: Record<string, Partial<Dict>> = {
+const translations: Record<string, Partial<Dictionary>> = {
   "be-BY": {
     OPEN_SETTINGS: "Адкрыць дадатковыя налады",
     SUBTITLES: "Субтытры",
@@ -52,7 +55,7 @@ const translations: Record<string, Partial<Dict>> = {
     SAVED: "Захавана",
   },
 };
-const text: Dict = {
+const text: Dictionary = {
   OPEN_SETTINGS: "Open additional settings",
   SUBTITLES: "Subtitles",
   SPEED: "Speed",

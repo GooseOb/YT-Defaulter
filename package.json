@@ -11,9 +11,6 @@
     "url": "https://github.com/GooseOb/YT-Defaulter/issues"
   },
   "devDependencies": {
-    "gulp": "^4.0.0",
-    "gulp-typescript": "^6.0.0-alpha.1",
-    "through2": "^4.0.2",
-    "typescript": "^5.0.4"
+    "bun-types": "^1.0.1"
   }
 }
