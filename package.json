@@ -10,6 +10,10 @@
   "bugs": {
     "url": "https://github.com/GooseOb/YT-Defaulter/issues"
   },
+  "scripts": {
+    "dev": "bun ./bun.ts",
+    "build": "bun ./bun.ts --build"
+  },
   "devDependencies": {
     "bun-types": "^1.0.1"
   }
