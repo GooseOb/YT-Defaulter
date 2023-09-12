@@ -1,6 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
-
 const STORAGE_NAME = "YTDefaulter",
   STORAGE_VERSION = 4,
   SECTION_GLOBAL = "global",

@@ -1,8 +1,6 @@
 {
   "name": "yt-defaulter",
   "author": "GooseOb",
-  "license": "MIT",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/GooseOb/YT-Defaulter.git"
@@ -10,11 +8,13 @@
   "bugs": {
     "url": "https://github.com/GooseOb/YT-Defaulter/issues"
   },
+  "license": "MIT",
   "scripts": {
-    "dev": "bun ./bun.ts",
-    "build": "bun ./bun.ts --build"
+    "dev": "build-userscript --out index.js",
+    "build": "build-userscript --out index.js --build"
   },
+  "type": "module",
   "devDependencies": {
-    "bun-types": "^1.0.1"
+    "bun-build-userscript": "^1.0.4"
   }
 }

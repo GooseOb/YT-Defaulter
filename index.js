@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.10
+// @version      1.6.11
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -9,7 +9,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==
 
-// index.ts
+(function(){// index.ts
 var debounce = function(callback, delay) {
   let timeout;
   return function(...args) {
@@ -682,3 +682,4 @@ ${m + i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m + i}[type=number] {-moz-appearance: textfield}
 ${m + s}::-ms-expand {display: none}`
 }));
+})()
