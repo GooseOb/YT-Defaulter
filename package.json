@@ -10,11 +10,11 @@
   },
   "license": "MIT",
   "scripts": {
-    "dev": "build-userscript --out index.js",
-    "build": "build-userscript --out index.js --build"
+    "dev": "build-userscript --cfg build-config.ts",
+    "build": "build-userscript --cfg build-config.ts --build"
   },
   "type": "module",
   "devDependencies": {
-    "bun-build-userscript": "^1.0.4"
+    "bun-build-userscript": "^1.2.4"
   }
 }

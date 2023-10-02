@@ -1,16 +1,16 @@
-const STORAGE_NAME = "YTDefaulter",
-  STORAGE_VERSION = 4,
-  SECTION_GLOBAL = "global",
-  SECTION_LOCAL = "thisChannel",
-  PREFIX = "YTDef-",
-  MENU_ID = PREFIX + "menu",
-  BTN_ID = PREFIX + "btn",
-  SETTING_HINT_CLASS = PREFIX + "setting-hint",
-  SUBTITLES = "subtitles",
-  SPEED = "speed",
-  CUSTOM_SPEED = "customSpeed",
-  QUALITY = "quality",
-  VOLUME = "volume";
+declare const STORAGE_NAME: "YTDefaulter",
+    STORAGE_VERSION: 4,
+    SECTION_GLOBAL: "global",
+    SECTION_LOCAL: "thisChannel",
+    PREFIX: "YTDef-",
+    MENU_ID: "YTDef-menu",
+    BTN_ID: "YTDef-btn",
+    SETTING_HINT_CLASS: "YTDef-setting-hint",
+    SUBTITLES: "subtitles",
+    SPEED: "speed",
+    CUSTOM_SPEED: "customSpeed",
+    QUALITY: "quality",
+    VOLUME: "volume";
 
 type Dictionary = Record<
   | "OPEN_SETTINGS"
@@ -47,7 +47,7 @@ const translations: Record<string, Partial<Dictionary>> = {
     SHORTS: "Адкрываць shorts як звычайныя",
     NEW_TAB: "Адкрываць відэа ў новай картцы",
     COPY_SUBS: "Капіяваць субтытры ў поўнаэкранным, Ctrl+C",
-    STANDARD_MUSIC_SPEED: "Не мяняць хуткасьць на каналах музыкаў",
+    STANDARD_MUSIC_SPEED: "Звычайная хуткасьць на каналах музыкаў",
     SAVE: "Захаваць",
     SAVED: "Захавана",
   },
@@ -65,7 +65,7 @@ const text: Dictionary = {
   SHORTS: "Open shorts as a usual video",
   NEW_TAB: "Open videos in a new tab",
   COPY_SUBS: "Copy subtitles by Ctrl+C in fullscreen mode",
-  STANDARD_MUSIC_SPEED: "Don't change speed on artist channels",
+  STANDARD_MUSIC_SPEED: "Normal speed on artist channels",
   SAVE: "Save",
   SAVED: "Saved",
   DEFAULT: "-",
@@ -119,11 +119,14 @@ const isDescendantOrTheSame = (
 const saveCfg = () => {
   const cfgCopy = { ...cfg };
   const channelsCfgCopy = { ...cfg.channels };
-  for (const key in channelsCfgCopy) {
+  outer: for (const key in channelsCfgCopy) {
     const channelCfg = channelsCfgCopy[key];
-    const { length } = Object.keys(channelCfg);
-    if (!length || (length === 1 && channelCfg.subtitles === false))
-      delete channelsCfgCopy[key];
+    if (channelCfg.subtitles) continue;
+    let oneOption = false;
+    for (const _ in channelCfg)
+      if (oneOption) continue outer;
+      else oneOption = true;
+    if (oneOption) delete channelsCfgCopy[key];
   }
   cfgCopy.channels = channelsCfgCopy;
 
@@ -132,16 +135,6 @@ const saveCfg = () => {
 
 if (cfg._v !== STORAGE_VERSION) {
   switch (cfg._v) {
-    case 1:
-      const { shortsToUsual, newTab } = cfg as any;
-      (cfg as any).flags = {
-        shortsToUsual,
-        newTab,
-        copySubs: false,
-      };
-      delete (cfg as any).shortsToUsual;
-      delete (cfg as any).newTab;
-      cfg._v = 2;
     case 2:
       cfg.flags.standardMusicSpeed = false;
       cfg._v = 3;
@@ -158,10 +151,10 @@ if (cfg._v !== STORAGE_VERSION) {
   saveCfg();
 }
 
-function debounce<T extends (...args: any[]) => any>(
-  callback: T,
+function debounce<TParams extends any[]>(
+  callback: (...args: TParams) => void,
   delay: number
-): (...args: Parameters<T>) => void {
+): (...args: TParams) => void {
   let timeout: number;
   return function (...args) {
     clearTimeout(timeout);
@@ -176,13 +169,13 @@ const restoreFocusAfter = (cb: () => void) => {
   el.focus();
 };
 
-const until = <TGetter extends () => any>(
-  getItem: TGetter,
-  check: (item: ReturnType<TGetter>) => boolean,
+const until = <T>(
+  getItem: () => T,
+  check: (item: T) => boolean,
   msToWait = 10_000,
   msReqTimeout = 20
 ) =>
-  new Promise<ReturnType<TGetter>>((res, rej) => {
+  new Promise<T>((res, rej) => {
     const reqLimit = msToWait / msReqTimeout;
     let i = 0;
     const interval = setInterval(() => {
@@ -197,10 +190,10 @@ const until = <TGetter extends () => any>(
     };
   });
 
-const untilAppear = <TGetter extends () => any>(
-  getItem: TGetter,
+const untilAppear = <T>(
+  getItem: () => T,
   msToWait?: number
-) => until(getItem, Boolean, msToWait);
+) => until<T>(getItem, Boolean, msToWait);
 
 type Menu = HTMLDivElement & {
   isOpen: boolean;
@@ -257,7 +250,7 @@ type YtMenuApi = {
   isOpen(): boolean;
   open(): void;
   close(): void;
-  openItem(item: HTMLElement): HTMLElement[];
+  openItem(item: HTMLElement): NodeListOf<HTMLElement>;
 };
 type YtMenu = HTMLElement & YtMenuApi;
 type YtSettingName = typeof SPEED | typeof QUALITY;
@@ -267,8 +260,9 @@ type YtSettingItems = Partial<Record<YtSettingName, YtSettingItem>>;
 type Props<T extends HTMLElement> = Partial<T> & object;
 const validateVolume = (value: string) => {
   const num = +value;
-  if (num < 0 || num > 100) throw "out of range";
-  if (isNaN(num)) throw "not a number";
+  return (num < 0 || num > 100) ? "out of range"
+    : isNaN(num) ? "not a number"
+      : false;
 };
 
 const getElCreator =
@@ -314,7 +308,8 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
     try {
       video.playbackRate = isSpeedChanged ? 1 : +value;
     } catch {
-      return logger.outOfRange("Custom speed");
+      logger.outOfRange("Custom speed");
+      return;
     }
     isSpeedChanged = !isSpeedChanged;
   },
@@ -345,7 +340,9 @@ const updateMenuVisibility = async () => {
   if (menu.btn) {
     isTheSameChannel = channelName === name;
     menu.btn.style.display = isTheSameChannel ? "flex" : "none";
-  } else channelName = name;
+  } else {
+    channelName = name;
+  }
 };
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const onPageChange = async () => {
@@ -378,9 +375,7 @@ const onPageChange = async () => {
     openItem(item) {
       this.open();
       item.click();
-      return Array.from(
-        this.querySelectorAll(".ytp-panel-animate-forward .ytp-menuitem-label")
-      );
+      return this.querySelectorAll(".ytp-panel-animate-forward .ytp-menuitem-label");
     },
   } satisfies YtMenuApi);
   restoreFocusAfter(() => {
@@ -388,26 +383,19 @@ const onPageChange = async () => {
     ytMenu.close();
   });
   const getMenuItems = () =>
-    ytMenu.querySelectorAll(
-      '.ytp-menuitem[role="menuitem"]'
-    ) as NodeListOf<YtSettingItem>;
-  const menuItemArr = Array.from(
-    await until(getMenuItems, (arr) => !!arr.length)
-  );
+    ytMenu.querySelectorAll<YtSettingItem>('.ytp-menuitem[role="menuitem"]');
+  const menuItemArr = await until(getMenuItems, (arr) => !!arr.length);
   Object.assign(ytSettingItems, {
-    quality: menuItemArr.at(-1),
+    quality: menuItemArr[menuItemArr.length - 1],
     speed: menuItemArr[0],
   } satisfies YtSettingItems);
   if (!SPEED_NORMAL)
     restoreFocusAfter(() => {
-      const labels = ytMenu.openItem(ytSettingItems.speed);
-      for (const label of labels) {
-        const text = label.textContent;
-        if (!+text) {
-          SPEED_NORMAL = text;
+      for (const {textContent} of ytMenu.openItem(ytSettingItems.speed))
+        if (!+textContent) {
+          SPEED_NORMAL = textContent;
           break;
         }
-      }
       ytMenu.close();
     });
   const doNotChangeSpeed =
@@ -421,9 +409,10 @@ const onPageChange = async () => {
     const isChannelCustomSpeed = "customSpeed" in channelCfg;
     if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
       delete settings.customSpeed;
-    if (doNotChangeSpeed && !isChannelSpeed) delete settings.speed;
+    if (doNotChangeSpeed && !isChannelSpeed)
+      settings.speed = SPEED_NORMAL;
   } else if (doNotChangeSpeed) {
-    delete settings.speed;
+    settings.speed = SPEED_NORMAL;
     delete settings.customSpeed;
   }
   const { customSpeed } = settings;
@@ -663,11 +652,11 @@ const onPageChange = async () => {
         max: "100",
         oninput(this: InputWithHint) {
           settings.volume = this.value;
-          try {
-            validateVolume(this.value);
+          const warning = validateVolume(this.value);
+          if (warning) {
+            this.hint.show(warning);
+          } else {
             this.hint.hide();
-          } catch (e) {
-            this.hint.show(e);
           }
         },
         hint: createHint("Warning: "),
@@ -784,9 +773,10 @@ document.addEventListener("keyup", (e) => {
   if (cfg.flags.copySubs && e.code === "KeyC") {
     const plr = document.querySelector(".html5-video-player");
     if (!plr?.classList.contains("ytp-fullscreen")) return;
-    const text = Array.from(plr.querySelectorAll(".captions-text > span"))
-      .map((line) => line.textContent)
-      .join(" ");
+    const text = Array.from(
+        plr.querySelectorAll(".captions-text > span"),
+        (line) => line.textContent
+    ).join(" ");
     navigator.clipboard.writeText(text);
     return;
   }
@@ -873,5 +863,4 @@ ${m + i}::-webkit-outer-spin-button,
 ${m + i}::-webkit-inner-spin-button {-webkit-appearance: none; margin: 0}
 ${m + i}[type=number] {-moz-appearance: textfield}
 ${m + s}::-ms-expand {display: none}`,
-  })
-);
+}));
