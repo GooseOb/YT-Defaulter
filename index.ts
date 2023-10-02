@@ -513,6 +513,36 @@ const onPageChange = async () => {
       },
     }),
   });
+  type ToOptions = (
+      values: readonly string[],
+      getText: (arg: string) => string
+  ) => HTMLOptionElement[];
+
+  const toOptions: ToOptions = (values, getText) =>
+      [
+        option({
+          value: text.DEFAULT,
+          textContent: text.DEFAULT,
+        }),
+      ].concat(
+          values.map((value) =>
+              option({
+                value: value,
+                textContent: getText(value),
+              })
+          )
+      );
+
+  const speedValues = [
+    "2", "1.75", "1.5", "1.25",
+    SPEED_NORMAL,
+    "0.75", "0.5", "0.25",
+  ];
+  const qualityValues = [
+    "144", "240", "360",
+    "480", "720", "1080",
+    "1440", "2160", "4320",
+  ];
 
   const createSection = (
     sectionId: string,
@@ -523,6 +553,7 @@ const onPageChange = async () => {
     section.setAttribute("aria-labelledby", sectionId);
     const getLocalId = (name: string) => PREFIX + name + "-" + sectionId;
     type Item = (HTMLInputElement | HTMLSelectElement) & { hint?: HTMLElement };
+
     const addItem = <TElem extends Item>(
       name: Setting,
       innerHTML: string,
@@ -551,47 +582,6 @@ const onPageChange = async () => {
       if (elem.hint) section.append(elem.hint);
       return { elem };
     };
-
-    type ToOptions = (
-      values: readonly string[],
-      getText: (arg: string) => string
-    ) => HTMLOptionElement[];
-
-    const toOptions: ToOptions = (values, getText) =>
-      [
-        option({
-          value: text.DEFAULT,
-          textContent: text.DEFAULT,
-        }),
-      ].concat(
-        values.map((value) =>
-          option({
-            value: value,
-            textContent: getText(value),
-          })
-        )
-      );
-    const speedValues = [
-      "2",
-      "1.75",
-      "1.5",
-      "1.25",
-      SPEED_NORMAL,
-      "0.75",
-      "0.5",
-      "0.25",
-    ];
-    const qualityValues = [
-      "144",
-      "240",
-      "360",
-      "480",
-      "720",
-      "1080",
-      "1440",
-      "2160",
-      "4320",
-    ];
 
     type AddSelectItem = (
       name: Setting,

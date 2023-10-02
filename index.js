@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.12
+// @version      1.6.13
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -390,6 +390,36 @@ var onPageChange = async () => {
       }
     })
   });
+  const toOptions = (values, getText) => [
+    option({
+      value: text.DEFAULT,
+      textContent: text.DEFAULT
+    })
+  ].concat(values.map((value) => option({
+    value,
+    textContent: getText(value)
+  })));
+  const speedValues = [
+    "2",
+    "1.75",
+    "1.5",
+    "1.25",
+    SPEED_NORMAL,
+    "0.75",
+    "0.5",
+    "0.25"
+  ];
+  const qualityValues = [
+    "144",
+    "240",
+    "360",
+    "480",
+    "720",
+    "1080",
+    "1440",
+    "2160",
+    "4320"
+  ];
   const createSection = (sectionId, title, sectionCfg) => {
     const section = div({ role: "group" });
     section.setAttribute("aria-labelledby", sectionId);
@@ -421,36 +451,6 @@ var onPageChange = async () => {
         section.append(elem.hint);
       return { elem };
     };
-    const toOptions = (values, getText) => [
-      option({
-        value: text.DEFAULT,
-        textContent: text.DEFAULT
-      })
-    ].concat(values.map((value) => option({
-      value,
-      textContent: getText(value)
-    })));
-    const speedValues = [
-      "2",
-      "1.75",
-      "1.5",
-      "1.25",
-      SPEED_NORMAL,
-      "0.75",
-      "0.5",
-      "0.25"
-    ];
-    const qualityValues = [
-      "144",
-      "240",
-      "360",
-      "480",
-      "720",
-      "1080",
-      "1440",
-      "2160",
-      "4320"
-    ];
     const addSelectItem = (name, label, options, getText) => addItem(name, label, selectEl({ value: text.DEFAULT })).elem.append(...toOptions(options, getText));
     section.append(getElCreator("span")({ textContent: title, id: sectionId }));
     const createHint = (prefix, props) => {
@@ -481,7 +481,7 @@ var onPageChange = async () => {
       hint: createHint(null, { textContent: text.CUSTOM_SPEED_HINT })
     }));
     addSelectItem("quality", text.QUALITY, qualityValues, (val) => val + "p");
-    addItem(VOLUME, text.VOLUME, input({
+    addItem("volume", text.VOLUME, input({
       type: "number",
       min: "0",
       max: "100",
