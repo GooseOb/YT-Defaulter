@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.13
+// @version      1.6.14
 // @description  Set speed, quality and subtitles as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -88,14 +88,10 @@ var saveCfg = () => {
       const channelCfg = channelsCfgCopy[key];
       if (channelCfg.subtitles)
         continue;
-      let oneOption = false;
-      for (const _ in channelCfg)
-        if (oneOption)
+      for (const cfgKey in channelCfg)
+        if (cfgKey !== "subtitles")
           continue outer;
-        else
-          oneOption = true;
-      if (oneOption)
-        delete channelsCfgCopy[key];
+      delete channelsCfgCopy[key];
     }
   cfgCopy.channels = channelsCfgCopy;
   localStorage["YTDefaulter"] = JSON.stringify(cfgCopy);
@@ -229,7 +225,7 @@ var valueSetters = {
 };
 var updateMenuVisibility = async () => {
   const name = await untilAppear(getChannelName);
-  if (menu.btn) {
+  if (menu?.btn) {
     isTheSameChannel = channelName === name;
     menu.btn.style.display = isTheSameChannel ? "flex" : "none";
   } else {
@@ -240,7 +236,7 @@ var delay = (ms) => new Promise((res) => setTimeout(res, ms));
 var onPageChange = async () => {
   if (location.pathname !== "/watch")
     return;
-  updateMenuVisibility();
+  await updateMenuVisibility();
   if (!channelCfg) {
     const channelUsername = await untilChannelUsernameAppear();
     channelCfg = cfg.channels[channelUsername] ||= {};

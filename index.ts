@@ -122,11 +122,9 @@ const saveCfg = () => {
   outer: for (const key in channelsCfgCopy) {
     const channelCfg = channelsCfgCopy[key];
     if (channelCfg.subtitles) continue;
-    let oneOption = false;
-    for (const _ in channelCfg)
-      if (oneOption) continue outer;
-      else oneOption = true;
-    if (oneOption) delete channelsCfgCopy[key];
+    for (const cfgKey in channelCfg)
+      if (cfgKey !== 'subtitles') continue outer;
+    delete channelsCfgCopy[key];
   }
   cfgCopy.channels = channelsCfgCopy;
 
@@ -337,7 +335,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 };
 const updateMenuVisibility = async () => {
   const name = await untilAppear(getChannelName);
-  if (menu.btn) {
+  if (menu?.btn) {
     isTheSameChannel = channelName === name;
     menu.btn.style.display = isTheSameChannel ? "flex" : "none";
   } else {
@@ -350,7 +348,7 @@ const onPageChange = async () => {
 
   /* ---------------------- apply settings ---------------------- */
 
-  updateMenuVisibility();
+  await updateMenuVisibility();
 
   if (!channelCfg) {
     const channelUsername = await untilChannelUsernameAppear();
