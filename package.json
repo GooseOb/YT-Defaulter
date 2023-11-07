@@ -1,20 +1,22 @@
 {
-  "name": "yt-defaulter",
-  "author": "GooseOb",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/GooseOb/YT-Defaulter.git"
-  },
-  "bugs": {
-    "url": "https://github.com/GooseOb/YT-Defaulter/issues"
-  },
-  "license": "MIT",
-  "scripts": {
-    "dev": "build-userscript --cfg build-config.ts",
-    "build": "build-userscript --cfg build-config.ts --build"
-  },
-  "type": "module",
-  "devDependencies": {
-    "bun-build-userscript": "^1.3.0"
-  }
+	"name": "yt-defaulter",
+	"author": "GooseOb",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/GooseOb/YT-Defaulter.git"
+	},
+	"bugs": {
+		"url": "https://github.com/GooseOb/YT-Defaulter/issues"
+	},
+	"license": "MIT",
+	"scripts": {
+		"dev": "build-userscript --cfg build-config.ts",
+		"build": "build-userscript --cfg build-config.ts --build"
+	},
+	"type": "module",
+	"devDependencies": {
+		"bun-build-userscript": "^1.3.4",
+		"husky": "^8.0.3",
+		"prettier": "^3.0.3"
+	}
 }
