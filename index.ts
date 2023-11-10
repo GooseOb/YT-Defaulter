@@ -328,6 +328,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 				btn.click();
 				break;
 			}
+		ytMenu.close();
 	},
 	speed(value) {
 		this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, SPEED);
