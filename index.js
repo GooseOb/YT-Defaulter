@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.17
+// @version      1.6.18
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -142,10 +142,60 @@ var isTheSameChannel = true;
 var video;
 var subtitlesBtn;
 var muteBtn;
-var ytMenu;
-var menu;
 var SPEED_NORMAL;
 var isSpeedChanged = false;
+var menu = {
+  element: null,
+  isOpen: false,
+  width: 0,
+  _closeListener: {
+    onClick(e) {
+      const el = e.target;
+      if (isDescendantOrTheSame(el, [menu.element, menu.btn]))
+        return;
+      menu.toggle();
+    },
+    onKeyUp(e) {
+      if (e.code !== "Escape")
+        return;
+      menu._close();
+      menu.btn.focus();
+    },
+    add() {
+      document.addEventListener("click", this.onClick);
+      document.addEventListener("keyup", this.onKeyUp);
+    },
+    remove() {
+      document.removeEventListener("click", this.onClick);
+      document.removeEventListener("keyup", this.onKeyUp);
+    }
+  },
+  firstElement: null,
+  _open() {
+    this.fixPosition();
+    this.element.style.visibility = "visible";
+    this._closeListener.add();
+    this.firstElement.focus();
+    this.isOpen = true;
+  },
+  _close() {
+    this.style.visibility = "hidden";
+    this._closeListener.remove();
+    this.isOpen = false;
+  },
+  toggle: debounce(function() {
+    if (this.isOpen)
+      this._close();
+    else
+      this._open();
+  }, 100),
+  fixPosition() {
+    const { y, height, width, left } = this.btn.getBoundingClientRect();
+    this.style.top = y + height + 8 + "px";
+    this.style.left = left + width - this.width + "px";
+  },
+  btn: null
+};
 var $ = (id) => document.getElementById(id);
 var getChannelName = () => new URLSearchParams(location.search).get("ab_channel");
 var getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*\/@/, "");
@@ -159,35 +209,34 @@ var iconD = {
 var getYtElementFinderInArray = (elems) => (name) => elems.find((el) => el.querySelector(`path[d="${iconD[name]}"]`));
 var untilChannelUsernameAppear = () => untilAppear(getChannelUsername).catch(() => "");
 var isMusicChannel = () => untilAppear(getAboveTheFold).then((el) => !!el.querySelector(".badge-style-type-verified-artist"));
-
-class YtMenu {
-  constructor(plr) {
+var ytMenu = {
+  updatePlayer(plr) {
     this.element = plr.querySelector(".ytp-settings-menu");
-    this.btn = plr.querySelector(".ytp-settings-button");
+    this._btn = plr.querySelector(".ytp-settings-button");
     restoreFocusAfter(() => {
-      this.btn.click();
-      this.btn.click();
+      this._btn.click();
+      this._btn.click();
     });
-  }
-  element;
-  btn;
-  isOpen() {
+  },
+  element: null,
+  _btn: null,
+  _isOpen() {
     return this.element.style.display !== "none";
-  }
+  },
   open() {
-    if (!this.isOpen())
-      this.btn.click();
-  }
+    if (!this._isOpen())
+      this._btn.click();
+  },
   close() {
-    if (this.isOpen())
-      this.btn.click();
-  }
+    if (this._isOpen())
+      this._btn.click();
+  },
   openItem(item) {
     this.open();
     item.click();
     return this.element.querySelectorAll(".ytp-panel-animate-forward .ytp-menuitem-label");
   }
-}
+};
 var validateVolume = (value) => {
   const num = +value;
   return num < 0 || num > 100 ? "out of range" : isNaN(num) ? "not a number" : false;
@@ -256,7 +305,7 @@ var valueSetters = {
 };
 var updateMenuVisibility = async () => {
   const name = await untilAppear(getChannelName);
-  if (menu?.btn) {
+  if (menu.btn) {
     isTheSameChannel = channelName === name;
     menu.btn.style.display = isTheSameChannel ? "flex" : "none";
   } else {
@@ -277,7 +326,7 @@ var onPageChange = async () => {
   const getAd = () => plr.querySelector(".ytp-ad-player-overlay");
   if (getAd())
     await until(getAd, (ad) => !ad, 200000);
-  ytMenu = new YtMenu(plr);
+  ytMenu.updatePlayer(plr);
   const getMenuItems = () => ytMenu.element.querySelectorAll('.ytp-menuitem[role="menuitem"]');
   const menuItemArr = Array.from(await until(getMenuItems, (arr) => !!arr.length));
   const getYtElement = getYtElementFinderInArray(menuItemArr);
@@ -323,7 +372,7 @@ var onPageChange = async () => {
     }
     ytMenu.close();
   });
-  if (menu)
+  if (menu.element)
     return;
   const div = getElCreator("div"), input = getElCreator("input"), checkbox = (props) => input({ type: "checkbox", ...props }), option = getElCreator("option"), _label = getElCreator("label"), labelEl = (forId, props) => {
     const elem = _label(props);
@@ -340,64 +389,16 @@ var onPageChange = async () => {
     },
     ...props
   });
-  menu = div({
-    id: "YTDef-menu",
-    isOpen: false,
-    width: 0,
-    _closeListener: {
-      onClick(e) {
-        const el = e.target;
-        if (isDescendantOrTheSame(el, [menu, menu.btn]))
-          return;
-        menu.toggle();
-      },
-      onKeyUp(e) {
-        if (e.code !== "Escape")
-          return;
-        menu._close();
-        menu.btn.focus();
-      },
-      add() {
-        document.addEventListener("click", this.onClick);
-        document.addEventListener("keyup", this.onKeyUp);
-      },
-      remove() {
-        document.removeEventListener("click", this.onClick);
-        document.removeEventListener("keyup", this.onKeyUp);
-      }
-    },
-    firstElement: null,
-    _open() {
-      this.fixPosition();
-      this.style.visibility = "visible";
-      this._closeListener.add();
-      this.firstElement.focus();
-      this.isOpen = true;
-    },
-    _close() {
-      this.style.visibility = "hidden";
-      this._closeListener.remove();
-      this.isOpen = false;
-    },
-    toggle: debounce(function() {
-      if (this.isOpen)
-        this._close();
-      else
-        this._open();
-    }, 100),
-    fixPosition() {
-      const { y, height, width, left } = this.btn.getBoundingClientRect();
-      this.style.top = y + height + 8 + "px";
-      this.style.left = left + width - this.width + "px";
-    },
-    btn: button("", {
-      id: "YTDef-btn",
-      ariaLabel: text.OPEN_SETTINGS,
-      tabIndex: 0,
-      onclick() {
-        menu.toggle();
-      }
-    })
+  menu.element = div({
+    id: "YTDef-menu"
+  });
+  menu.btn = button("", {
+    id: "YTDef-btn",
+    ariaLabel: text.OPEN_SETTINGS,
+    tabIndex: 0,
+    onclick() {
+      menu.toggle();
+    }
   });
   const toOptions = (values, getText) => [
     option({
@@ -528,7 +529,7 @@ var onPageChange = async () => {
     }));
     return cont;
   };
-  menu.append(sections, checkboxDiv("shorts", "shortsToUsual", text.SHORTS), checkboxDiv("new-tab", "newTab", text.NEW_TAB), checkboxDiv("copy-subs", "copySubs", text.COPY_SUBS), checkboxDiv("standard-music-speed", "standardMusicSpeed", text.STANDARD_MUSIC_SPEED), button(text.SAVE, {
+  menu.element.append(sections, checkboxDiv("shorts", "shortsToUsual", text.SHORTS), checkboxDiv("new-tab", "newTab", text.NEW_TAB), checkboxDiv("copy-subs", "copySubs", text.COPY_SUBS), checkboxDiv("standard-music-speed", "standardMusicSpeed", text.STANDARD_MUSIC_SPEED), button(text.SAVE, {
     setTextDefer: debounce(function(text2) {
       this.textContent = text2;
     }, 1000),
@@ -538,7 +539,7 @@ var onPageChange = async () => {
       this.setTextDefer(text.SAVE);
     }
   }));
-  menu.addEventListener("keyup", (e) => {
+  menu.element.addEventListener("keyup", (e) => {
     const el = e.target;
     if (e.code === "Enter" && el.type === "checkbox")
       el.checked = !el.checked;
@@ -558,8 +559,8 @@ var onPageChange = async () => {
   menu.btn.append(settingsIcon);
   const actionsBar = await untilAppear(getActionsBar);
   actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
-  document.querySelector("ytd-popup-container").append(menu);
-  menu.width = menu.getBoundingClientRect().width;
+  document.querySelector("ytd-popup-container").append(menu.element);
+  menu.width = menu.element.getBoundingClientRect().width;
   sections.style.maxWidth = sections.offsetWidth + "px";
 };
 var lastHref;
@@ -620,7 +621,7 @@ document.addEventListener("keyup", (e) => {
   });
 }, { capture: true });
 var listener = () => {
-  if (menu?.isOpen)
+  if (menu.isOpen)
     menu.fixPosition();
 };
 window.addEventListener("scroll", listener);

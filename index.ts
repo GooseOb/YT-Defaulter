@@ -12,26 +12,6 @@ declare const STORAGE_NAME: 'YTDefaulter',
 	QUALITY: 'quality',
 	VOLUME: 'volume';
 
-type Dictionary = Record<
-	| 'OPEN_SETTINGS'
-	| 'SUBTITLES'
-	| 'SPEED'
-	| 'CUSTOM_SPEED'
-	| 'CUSTOM_SPEED_HINT'
-	| 'QUALITY'
-	| 'VOLUME'
-	| 'GLOBAL'
-	| 'LOCAL'
-	| 'SHORTS'
-	| 'NEW_TAB'
-	| 'COPY_SUBS'
-	| 'STANDARD_MUSIC_SPEED'
-	| 'SAVE'
-	| 'SAVED'
-	| 'DEFAULT',
-	string
->;
-
 const translations: Record<string, Partial<Dictionary>> = {
 	'be-BY': {
 		OPEN_SETTINGS: 'Адкрыць дадатковыя налады',
@@ -72,24 +52,6 @@ const text: Dictionary = {
 	...translations[document.documentElement.lang],
 };
 
-type FlagName = 'shortsToUsual' | 'newTab' | 'copySubs' | 'standardMusicSpeed';
-type YTCfg = {
-	speed?: string;
-	quality?: string;
-	volume?: string;
-	subtitles?: boolean;
-};
-type Cfg = YTCfg & {
-	customSpeed?: string;
-};
-type Setting = keyof Cfg;
-type YTSetting = keyof YTCfg;
-type ScriptCfg = {
-	_v: number;
-	global: Cfg;
-	channels: Record<string, Cfg>;
-	flags: Record<FlagName, boolean>;
-};
 const cfgLocalStorage = localStorage[STORAGE_NAME];
 const cfg: ScriptCfg = cfgLocalStorage
 	? JSON.parse(cfgLocalStorage)
@@ -190,22 +152,6 @@ const until = <T>(
 const untilAppear = <T>(getItem: () => T, msToWait?: number) =>
 	until<T>(getItem, Boolean, msToWait);
 
-type Menu = HTMLDivElement & {
-	isOpen: boolean;
-	btn: HTMLButtonElement;
-	width: number;
-	_closeListener: {
-		onClick(e: Event): void;
-		onKeyUp(e: KeyboardEvent): void;
-		add(): void;
-		remove(): void;
-	};
-	firstElement: { focus(): void };
-	_open(): void;
-	_close(): void;
-	toggle(): void;
-	fixPosition(): void;
-};
 const ytSettingItems: YtSettingItems = {};
 let channelCfg: Partial<Cfg>,
 	channelName: string,
@@ -213,10 +159,57 @@ let channelCfg: Partial<Cfg>,
 	video: HTMLVideoElement,
 	subtitlesBtn: HTMLButtonElement,
 	muteBtn: HTMLButtonElement,
-	ytMenu: YtMenu,
-	menu: Menu,
 	SPEED_NORMAL: string,
 	isSpeedChanged = false;
+
+const menu: Menu = {
+	element: null,
+	isOpen: false,
+	width: 0,
+	_closeListener: {
+		onClick(e: Event) {
+			const el = e.target as HTMLElement;
+			if (isDescendantOrTheSame(el, [menu.element, menu.btn])) return;
+			menu.toggle();
+		},
+		onKeyUp(e) {
+			if (e.code !== 'Escape') return;
+			menu._close();
+			menu.btn.focus();
+		},
+		add() {
+			document.addEventListener('click', this.onClick);
+			document.addEventListener('keyup', this.onKeyUp);
+		},
+		remove() {
+			document.removeEventListener('click', this.onClick);
+			document.removeEventListener('keyup', this.onKeyUp);
+		},
+	},
+	firstElement: null,
+	_open() {
+		this.fixPosition();
+		this.element.style.visibility = 'visible';
+		this._closeListener.add();
+		this.firstElement.focus();
+		this.isOpen = true;
+	},
+	_close() {
+		this.style.visibility = 'hidden';
+		this._closeListener.remove();
+		this.isOpen = false;
+	},
+	toggle: debounce(function () {
+		if (this.isOpen) this._close();
+		else this._open();
+	}, 100),
+	fixPosition() {
+		const { y, height, width, left } = this.btn.getBoundingClientRect();
+		this.style.top = y + height + 8 + 'px';
+		this.style.left = left + width - this.width + 'px';
+	},
+	btn: null,
+};
 
 const $ = (id: string) => document.getElementById(id);
 
@@ -238,7 +231,7 @@ const iconD = {
 		'M15,17h6v1h-6V17z M11,17H3v1h8v2h1v-2v-1v-2h-1V17z M14,8h1V6V5V3h-1v2H3v1h11V8z            M18,5v1h3V5H18z M6,14h1v-2v-1V9H6v2H3v1 h3V14z M10,12h11v-1H10V12z',
 	[SPEED]:
 		'M10,8v8l6-4L10,8L10,8z M6.3,5L5.7,4.2C7.2,3,9,2.2,11,2l0.1,1C9.3,3.2,7.7,3.9,6.3,5z            M5,6.3L4.2,5.7C3,7.2,2.2,9,2,11 l1,.1C3.2,9.3,3.9,7.7,5,6.3z            M5,17.7c-1.1-1.4-1.8-3.1-2-4.8L2,13c0.2,2,1,3.8,2.2,5.4L5,17.7z            M11.1,21c-1.8-0.2-3.4-0.9-4.8-2 l-0.6,.8C7.2,21,9,21.8,11,22L11.1,21z            M22,12c0-5.2-3.9-9.4-9-10l-0.1,1c4.6,.5,8.1,4.3,8.1,9s-3.5,8.5-8.1,9l0.1,1 C18.2,21.5,22,17.2,22,12z',
-} as const;
+} satisfies Record<YtSettingName, string>;
 const getYtElementFinderInArray =
 	<TElem extends HTMLElement>(elems: TElem[]) =>
 	(name: YtSettingName) =>
@@ -252,40 +245,38 @@ const isMusicChannel = () =>
 		(el) => !!el.querySelector('.badge-style-type-verified-artist')
 	);
 
-class YtMenu {
-	constructor(plr: HTMLElement) {
+const ytMenu: YtMenu = {
+	updatePlayer(plr: HTMLElement) {
 		this.element = plr.querySelector('.ytp-settings-menu');
-		this.btn = plr.querySelector('.ytp-settings-button');
+		this._btn = plr.querySelector('.ytp-settings-button');
 		restoreFocusAfter(() => {
-			this.btn.click();
-			this.btn.click();
+			this._btn.click();
+			this._btn.click();
 		});
-	}
-	element: HTMLElement;
-	private btn: HTMLElement;
-	private isOpen() {
+	},
+	element: null,
+	_btn: null,
+	_isOpen() {
 		return this.element.style.display !== 'none';
-	}
+	},
 	open() {
-		if (!this.isOpen()) this.btn.click();
-	}
+		if (!this._isOpen()) this._btn.click();
+	},
 	close() {
-		if (this.isOpen()) this.btn.click();
-	}
-	openItem(item: YtSettingItem) {
+		if (this._isOpen()) this._btn.click();
+	},
+	openItem(item) {
 		this.open();
 		item.click();
 		return this.element.querySelectorAll<HTMLElement>(
 			'.ytp-panel-animate-forward .ytp-menuitem-label'
 		);
-	}
-}
+	},
+};
 
 type YtSettingName = typeof SPEED | typeof QUALITY;
-type YtSettingItem = HTMLDivElement & { role: 'menuitem' };
 type YtSettingItems = Partial<Record<YtSettingName, YtSettingItem>>;
 
-type Props<T extends HTMLElement> = Partial<T> & object;
 const validateVolume = (value: string) => {
 	const num = +value;
 	return num < 0 || num > 100
@@ -295,6 +286,7 @@ const validateVolume = (value: string) => {
 		: false;
 };
 
+type Props<T extends HTMLElement> = Partial<T> & object;
 const getElCreator =
 	<TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
 	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) =>
@@ -367,7 +359,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 };
 const updateMenuVisibility = async () => {
 	const name = await untilAppear(getChannelName);
-	if (menu?.btn) {
+	if (menu.btn) {
 		isTheSameChannel = channelName === name;
 		menu.btn.style.display = isTheSameChannel ? 'flex' : 'none';
 	} else {
@@ -391,7 +383,7 @@ const onPageChange = async () => {
 	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd()) await until(getAd, (ad) => !ad, 200_000);
-	ytMenu = new YtMenu(plr);
+	ytMenu.updatePlayer(plr);
 	const getMenuItems = () =>
 		ytMenu.element.querySelectorAll<YtSettingItem>(
 			'.ytp-menuitem[role="menuitem"]'
@@ -445,7 +437,7 @@ const onPageChange = async () => {
 
 	/* ---------------------- settings menu ---------------------- */
 
-	if (menu) return;
+	if (menu.element) return;
 
 	const div = getElCreator('div'),
 		input = getElCreator('input'),
@@ -473,60 +465,16 @@ const onPageChange = async () => {
 				},
 				...props,
 			});
-	menu = div({
+	menu.element = div({
 		id: MENU_ID,
-		isOpen: false,
-		width: 0,
-		_closeListener: {
-			onClick(e: Event) {
-				const el = e.target as HTMLElement;
-				if (isDescendantOrTheSame(el, [menu, menu.btn])) return;
-				menu.toggle();
-			},
-			onKeyUp(e) {
-				if (e.code !== 'Escape') return;
-				menu._close();
-				menu.btn.focus();
-			},
-			add() {
-				document.addEventListener('click', this.onClick);
-				document.addEventListener('keyup', this.onKeyUp);
-			},
-			remove() {
-				document.removeEventListener('click', this.onClick);
-				document.removeEventListener('keyup', this.onKeyUp);
-			},
+	});
+	menu.btn = button('', {
+		id: BTN_ID,
+		ariaLabel: text.OPEN_SETTINGS,
+		tabIndex: 0,
+		onclick() {
+			menu.toggle();
 		},
-		firstElement: null,
-		_open() {
-			this.fixPosition();
-			this.style.visibility = 'visible';
-			this._closeListener.add();
-			this.firstElement.focus();
-			this.isOpen = true;
-		},
-		_close() {
-			this.style.visibility = 'hidden';
-			this._closeListener.remove();
-			this.isOpen = false;
-		},
-		toggle: debounce(function () {
-			if (this.isOpen) this._close();
-			else this._open();
-		}, 100),
-		fixPosition() {
-			const { y, height, width, left } = this.btn.getBoundingClientRect();
-			this.style.top = y + height + 8 + 'px';
-			this.style.left = left + width - this.width + 'px';
-		},
-		btn: button('', {
-			id: BTN_ID,
-			ariaLabel: text.OPEN_SETTINGS,
-			tabIndex: 0,
-			onclick() {
-				menu.toggle();
-			},
-		}),
 	});
 	type ToOptions = (
 		values: readonly string[],
@@ -621,11 +569,6 @@ const onPageChange = async () => {
 		};
 
 		section.append(getElCreator('span')({ textContent: title, id: sectionId }));
-		type HintElem = HTMLDivElement & {
-			hide(): void;
-			show(msg?: string): void;
-		};
-		type InputWithHint = HTMLInputElement & { hint: HintElem };
 		const createHint = <TProps extends Props<HTMLDivElement>>(
 			prefix: string,
 			props?: TProps
@@ -717,7 +660,7 @@ const onPageChange = async () => {
 	type SaveButton = Props<HTMLButtonElement> & {
 		setTextDefer: (text: string) => void;
 	};
-	menu.append(
+	menu.element.append(
 		sections,
 		checkboxDiv('shorts', 'shortsToUsual', text.SHORTS),
 		checkboxDiv('new-tab', 'newTab', text.NEW_TAB),
@@ -738,7 +681,7 @@ const onPageChange = async () => {
 			},
 		} as SaveButton)
 	);
-	menu.addEventListener('keyup', (e) => {
+	menu.element.addEventListener('keyup', (e) => {
 		const el = e.target as HTMLInputElement;
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
@@ -761,8 +704,8 @@ const onPageChange = async () => {
 	menu.btn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
 	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
-	document.querySelector('ytd-popup-container').append(menu);
-	menu.width = menu.getBoundingClientRect().width;
+	document.querySelector('ytd-popup-container').append(menu.element);
+	menu.width = menu.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
 };
 
@@ -829,7 +772,7 @@ document.addEventListener(
 	{ capture: true }
 );
 const listener = () => {
-	if (menu?.isOpen) menu.fixPosition();
+	if (menu.isOpen) menu.fixPosition();
 };
 window.addEventListener('scroll', listener);
 window.addEventListener('resize', listener);
