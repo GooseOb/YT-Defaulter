@@ -12,12 +12,18 @@ type Dictionary = Record<
 	| 'NEW_TAB'
 	| 'COPY_SUBS'
 	| 'STANDARD_MUSIC_SPEED'
+	| 'ENHANCED_BITRATE'
 	| 'SAVE'
 	| 'SAVED'
 	| 'DEFAULT',
 	string
 >;
-type FlagName = 'shortsToUsual' | 'newTab' | 'copySubs' | 'standardMusicSpeed';
+type FlagName =
+	| 'shortsToUsual'
+	| 'newTab'
+	| 'copySubs'
+	| 'standardMusicSpeed'
+	| 'enhancedBitrate';
 type YTCfg = {
 	speed?: string;
 	quality?: string;
@@ -37,8 +43,9 @@ type ScriptCfg = {
 };
 type Menu = {
 	element: HTMLDivElement;
-	isOpen: boolean;
 	btn: HTMLButtonElement;
+	firstElement: { focus(): void };
+	isOpen: boolean;
 	width: number;
 	_closeListener: {
 		onClick(e: Event): void;
@@ -46,24 +53,22 @@ type Menu = {
 		add(): void;
 		remove(): void;
 	};
-	firstElement: { focus(): void };
-	_open(): void;
-	_close(): void;
+	_setOpen(bool: boolean): void;
 	toggle(): void;
 	fixPosition(): void;
 };
 type YtSettingItem = HTMLDivElement & { role: 'menuitem' };
 type YtMenu = {
-	updatePlayer(plr: HTMLElement): void;
 	element: HTMLElement & ParentNode;
 	_btn: HTMLElement;
-	_isOpen(): boolean;
-	open(): void;
-	close(): void;
+	updatePlayer(plr: HTMLElement): void;
+	isOpen(): boolean;
+	setOpen(bool: boolean): void;
 	openItem(this: YtMenu, item: YtSettingItem): NodeListOf<HTMLElement>;
 };
-type HintElem = HTMLDivElement & {
+type Hint = {
+	element: HTMLDivElement;
 	hide(): void;
 	show(msg?: string): void;
 };
-type InputWithHint = HTMLInputElement & { hint: HintElem };
+type InputWithHint = HTMLInputElement & { hint: Hint };

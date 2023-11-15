@@ -28,6 +28,7 @@ const translations: Record<string, Partial<Dictionary>> = {
 		NEW_TAB: 'Адкрываць відэа ў новай картцы',
 		COPY_SUBS: 'Капіяваць субтытры ў поўнаэкранным, Ctrl+C',
 		STANDARD_MUSIC_SPEED: 'Звычайная хуткасьць на каналах музыкаў',
+		ENHANCED_BITRATE: 'Палепшаны бітрэйт (для карыстальнікаў Premium)',
 		SAVE: 'Захаваць',
 		SAVED: 'Захавана',
 	},
@@ -46,6 +47,7 @@ const text: Dictionary = {
 	NEW_TAB: 'Open videos in a new tab',
 	COPY_SUBS: 'Copy subtitles by Ctrl+C in fullscreen mode',
 	STANDARD_MUSIC_SPEED: 'Normal speed on artist channels',
+	ENHANCED_BITRATE: 'Quality: Enhanced bitrate (for Premium users)',
 	SAVE: 'Save',
 	SAVED: 'Saved',
 	DEFAULT: '-',
@@ -64,6 +66,7 @@ const cfg: ScriptCfg = cfgLocalStorage
 				newTab: false,
 				copySubs: false,
 				standardMusicSpeed: false,
+				enhancedBitrate: false,
 			},
 	  };
 const isDescendantOrTheSame = (
@@ -164,6 +167,7 @@ let channelCfg: Partial<Cfg>,
 
 const menu: Menu = {
 	element: null,
+	btn: null,
 	isOpen: false,
 	width: 0,
 	_closeListener: {
@@ -174,7 +178,7 @@ const menu: Menu = {
 		},
 		onKeyUp(e) {
 			if (e.code !== 'Escape') return;
-			menu._close();
+			menu._setOpen(false);
 			menu.btn.focus();
 		},
 		add() {
@@ -187,28 +191,26 @@ const menu: Menu = {
 		},
 	},
 	firstElement: null,
-	_open() {
-		this.fixPosition();
-		this.element.style.visibility = 'visible';
-		this._closeListener.add();
-		this.firstElement.focus();
-		this.isOpen = true;
-	},
-	_close() {
-		this.style.visibility = 'hidden';
-		this._closeListener.remove();
-		this.isOpen = false;
+	_setOpen(bool) {
+		if (bool) {
+			this.fixPosition();
+			this.element.style.visibility = 'visible';
+			this._closeListener.add();
+			this.firstElement.focus();
+		} else {
+			this.element.style.visibility = 'hidden';
+			this._closeListener.remove();
+		}
+		this.isOpen = bool;
 	},
 	toggle: debounce(function () {
-		if (this.isOpen) this._close();
-		else this._open();
+		this._setOpen(!this.isOpen);
 	}, 100),
 	fixPosition() {
 		const { y, height, width, left } = this.btn.getBoundingClientRect();
-		this.style.top = y + height + 8 + 'px';
-		this.style.left = left + width - this.width + 'px';
+		this.element.style.top = y + height + 8 + 'px';
+		this.element.style.left = left + width - this.width + 'px';
 	},
-	btn: null,
 };
 
 const $ = (id: string) => document.getElementById(id);
@@ -256,17 +258,14 @@ const ytMenu: YtMenu = {
 	},
 	element: null,
 	_btn: null,
-	_isOpen() {
+	isOpen() {
 		return this.element.style.display !== 'none';
 	},
-	open() {
-		if (!this._isOpen()) this._btn.click();
-	},
-	close() {
-		if (this._isOpen()) this._btn.click();
+	setOpen(bool) {
+		if (bool !== this.isOpen()) this._btn.click();
 	},
 	openItem(item) {
-		this.open();
+		this.setOpen(true);
 		item.click();
 		return this.element.querySelectorAll<HTMLElement>(
 			'.ytp-panel-animate-forward .ytp-menuitem-label'
@@ -291,10 +290,13 @@ const getElCreator =
 	<TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
 	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) =>
 		Object.assign(document.createElement(tag), props);
-type Comparator = (value: string, current: string) => boolean;
+type Comparator = (target: string, current: string) => boolean;
 const comparators: Record<YtSettingName, Comparator> = {
-	[QUALITY]: (value, current) => +value >= parseInt(current),
-	[SPEED]: (value, current) => value === current,
+	// assuming the search is from the top
+	[QUALITY]: (target, current) =>
+		+target >= parseInt(current) &&
+		(cfg.flags.enhancedBitrate || !current.toLowerCase().includes('premium')),
+	[SPEED]: (target, current) => target === current,
 };
 const logger = {
 	prefix: '[YT-Defaulter]',
@@ -314,13 +316,14 @@ type ValueSetterHelpers = {
 type ValueSetters = { [p in Setting]: (value: Cfg[p]) => void };
 const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(value, settingName) {
+		const isOpen = ytMenu.isOpen();
 		const compare = comparators[settingName];
 		for (const btn of ytMenu.openItem(ytSettingItems[settingName]))
 			if (compare(value, btn.textContent)) {
 				btn.click();
 				break;
 			}
-		ytMenu.close();
+		ytMenu.setOpen(isOpen);
 	},
 	speed(value) {
 		this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, SPEED);
@@ -432,7 +435,7 @@ const onPageChange = async () => {
 			isSpeedChanged = false;
 			valueSetters.customSpeed(customSpeed);
 		}
-		ytMenu.close();
+		ytMenu.setOpen(false);
 	});
 
 	/* ---------------------- settings menu ---------------------- */
@@ -526,7 +529,7 @@ const onPageChange = async () => {
 		const section = div({ role: 'group' });
 		section.setAttribute('aria-labelledby', sectionId);
 		const getLocalId = (name: string) => PREFIX + name + '-' + sectionId;
-		type Item = (HTMLInputElement | HTMLSelectElement) & { hint?: HTMLElement };
+		type Item = (HTMLInputElement | HTMLSelectElement) & { hint?: Hint };
 
 		const addItem = <TElem extends Item>(
 			name: Setting,
@@ -553,7 +556,7 @@ const onPageChange = async () => {
 				});
 			item.append(label, elem);
 			section.append(item);
-			if (elem.hint) section.append(elem.hint);
+			if (elem.hint) section.append(elem.hint.element);
 			return { elem };
 		};
 
@@ -573,19 +576,21 @@ const onPageChange = async () => {
 			prefix: string,
 			props?: TProps
 		) => {
-			const el: HintElem & TProps = div({
-				className: SETTING_HINT_CLASS,
+			const obj: Hint = {
+				element: div({
+					className: SETTING_HINT_CLASS,
+					...props,
+				}),
 				hide() {
-					this.style.display = 'none';
+					this.element.style.display = 'none';
 				},
 				show(msg?: string) {
-					this.style.display = 'block';
-					if (msg) this.textContent = prefix + msg;
+					this.element.style.display = 'block';
+					if (msg) this.element.textContent = prefix + msg;
 				},
-				...props,
-			});
-			el.hide();
-			return el;
+			};
+			obj.hide();
+			return obj;
 		};
 		const firstElement = addSelectItem(
 			SPEED,
@@ -670,6 +675,7 @@ const onPageChange = async () => {
 			'standardMusicSpeed',
 			text.STANDARD_MUSIC_SPEED
 		),
+		checkboxDiv('enhanced-bitrate', 'enhancedBitrate', text.ENHANCED_BITRATE),
 		button(text.SAVE, {
 			setTextDefer: debounce(function (text: string) {
 				this.textContent = text;

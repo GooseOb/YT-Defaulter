@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.6.18
+// @version      1.7.0
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -34,6 +34,7 @@ var translations = {
     NEW_TAB: "Адкрываць відэа ў новай картцы",
     COPY_SUBS: "Капіяваць субтытры ў поўнаэкранным, Ctrl+C",
     STANDARD_MUSIC_SPEED: "Звычайная хуткасьць на каналах музыкаў",
+    ENHANCED_BITRATE: "Палепшаны бітрэйт (для карыстальнікаў Premium)",
     SAVE: "Захаваць",
     SAVED: "Захавана"
   }
@@ -52,6 +53,7 @@ var text = {
   NEW_TAB: "Open videos in a new tab",
   COPY_SUBS: "Copy subtitles by Ctrl+C in fullscreen mode",
   STANDARD_MUSIC_SPEED: "Normal speed on artist channels",
+  ENHANCED_BITRATE: "Quality: Enhanced bitrate (for Premium users)",
   SAVE: "Save",
   SAVED: "Saved",
   DEFAULT: "-",
@@ -66,7 +68,8 @@ var cfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
     shortsToUsual: false,
     newTab: false,
     copySubs: false,
-    standardMusicSpeed: false
+    standardMusicSpeed: false,
+    enhancedBitrate: false
   }
 };
 var isDescendantOrTheSame = (child, parents) => {
@@ -146,6 +149,7 @@ var SPEED_NORMAL;
 var isSpeedChanged = false;
 var menu = {
   element: null,
+  btn: null,
   isOpen: false,
   width: 0,
   _closeListener: {
@@ -158,7 +162,7 @@ var menu = {
     onKeyUp(e) {
       if (e.code !== "Escape")
         return;
-      menu._close();
+      menu._setOpen(false);
       menu.btn.focus();
     },
     add() {
@@ -171,30 +175,26 @@ var menu = {
     }
   },
   firstElement: null,
-  _open() {
-    this.fixPosition();
-    this.element.style.visibility = "visible";
-    this._closeListener.add();
-    this.firstElement.focus();
-    this.isOpen = true;
-  },
-  _close() {
-    this.style.visibility = "hidden";
-    this._closeListener.remove();
-    this.isOpen = false;
+  _setOpen(bool) {
+    if (bool) {
+      this.fixPosition();
+      this.element.style.visibility = "visible";
+      this._closeListener.add();
+      this.firstElement.focus();
+    } else {
+      this.element.style.visibility = "hidden";
+      this._closeListener.remove();
+    }
+    this.isOpen = bool;
   },
   toggle: debounce(function() {
-    if (this.isOpen)
-      this._close();
-    else
-      this._open();
+    this._setOpen(!this.isOpen);
   }, 100),
   fixPosition() {
     const { y, height, width, left } = this.btn.getBoundingClientRect();
-    this.style.top = y + height + 8 + "px";
-    this.style.left = left + width - this.width + "px";
-  },
-  btn: null
+    this.element.style.top = y + height + 8 + "px";
+    this.element.style.left = left + width - this.width + "px";
+  }
 };
 var $ = (id) => document.getElementById(id);
 var getChannelName = () => new URLSearchParams(location.search).get("ab_channel");
@@ -220,19 +220,15 @@ var ytMenu = {
   },
   element: null,
   _btn: null,
-  _isOpen() {
+  isOpen() {
     return this.element.style.display !== "none";
   },
-  open() {
-    if (!this._isOpen())
-      this._btn.click();
-  },
-  close() {
-    if (this._isOpen())
+  setOpen(bool) {
+    if (bool !== this.isOpen())
       this._btn.click();
   },
   openItem(item) {
-    this.open();
+    this.setOpen(true);
     item.click();
     return this.element.querySelectorAll(".ytp-panel-animate-forward .ytp-menuitem-label");
   }
@@ -243,8 +239,8 @@ var validateVolume = (value) => {
 };
 var getElCreator = (tag) => (props) => Object.assign(document.createElement(tag), props);
 var comparators = {
-  ["quality"]: (value, current) => +value >= parseInt(current),
-  ["speed"]: (value, current) => value === current
+  ["quality"]: (target, current) => +target >= parseInt(current) && (cfg.flags.enhancedBitrate || !current.toLowerCase().includes("premium")),
+  ["speed"]: (target, current) => target === current
 };
 var logger = {
   prefix: "[YT-Defaulter]",
@@ -257,13 +253,14 @@ var logger = {
 };
 var valueSetters = {
   _ytSettingItem(value, settingName) {
+    const isOpen = ytMenu.isOpen();
     const compare = comparators[settingName];
     for (const btn of ytMenu.openItem(ytSettingItems[settingName]))
       if (compare(value, btn.textContent)) {
         btn.click();
         break;
       }
-    ytMenu.close();
+    ytMenu.setOpen(isOpen);
   },
   speed(value) {
     this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, "speed");
@@ -370,7 +367,7 @@ var onPageChange = async () => {
       isSpeedChanged = false;
       valueSetters.customSpeed(customSpeed);
     }
-    ytMenu.close();
+    ytMenu.setOpen(false);
   });
   if (menu.element)
     return;
@@ -458,7 +455,7 @@ var onPageChange = async () => {
       item.append(label, elem);
       section.append(item);
       if (elem.hint)
-        section.append(elem.hint);
+        section.append(elem.hint.element);
       return { elem };
     };
     const addSelectItem = (name, label, options, getText) => {
@@ -468,20 +465,22 @@ var onPageChange = async () => {
     };
     section.append(getElCreator("span")({ textContent: title, id: sectionId }));
     const createHint = (prefix, props) => {
-      const el = div({
-        className: "YTDef-setting-hint",
+      const obj = {
+        element: div({
+          className: "YTDef-setting-hint",
+          ...props
+        }),
         hide() {
-          this.style.display = "none";
+          this.element.style.display = "none";
         },
         show(msg) {
-          this.style.display = "block";
+          this.element.style.display = "block";
           if (msg)
-            this.textContent = prefix + msg;
-        },
-        ...props
-      });
-      el.hide();
-      return el;
+            this.element.textContent = prefix + msg;
+        }
+      };
+      obj.hide();
+      return obj;
     };
     const firstElement = addSelectItem("speed", text.SPEED, speedValues, (val) => val);
     if (sectionId === "global")
@@ -529,7 +528,7 @@ var onPageChange = async () => {
     }));
     return cont;
   };
-  menu.element.append(sections, checkboxDiv("shorts", "shortsToUsual", text.SHORTS), checkboxDiv("new-tab", "newTab", text.NEW_TAB), checkboxDiv("copy-subs", "copySubs", text.COPY_SUBS), checkboxDiv("standard-music-speed", "standardMusicSpeed", text.STANDARD_MUSIC_SPEED), button(text.SAVE, {
+  menu.element.append(sections, checkboxDiv("shorts", "shortsToUsual", text.SHORTS), checkboxDiv("new-tab", "newTab", text.NEW_TAB), checkboxDiv("copy-subs", "copySubs", text.COPY_SUBS), checkboxDiv("standard-music-speed", "standardMusicSpeed", text.STANDARD_MUSIC_SPEED), checkboxDiv("enhanced-bitrate", "enhancedBitrate", text.ENHANCED_BITRATE), button(text.SAVE, {
     setTextDefer: debounce(function(text2) {
       this.textContent = text2;
     }, 1000),
