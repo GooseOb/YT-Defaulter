@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.7.0
+// @version      1.7.1
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -73,13 +73,10 @@ var cfg = cfgLocalStorage ? JSON.parse(cfgLocalStorage) : {
   }
 };
 var isDescendantOrTheSame = (child, parents) => {
-  if (parents.includes(child))
-    return true;
-  let node = child.parentNode;
-  while (node !== null) {
-    if (parents.includes(node))
+  while (child !== null) {
+    if (parents.includes(child))
       return true;
-    node = node.parentNode;
+    child = child.parentNode;
   }
   return false;
 };
@@ -197,8 +194,7 @@ var menu = {
   }
 };
 var $ = (id) => document.getElementById(id);
-var getChannelName = () => new URLSearchParams(location.search).get("ab_channel");
-var getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*\/@/, "");
+var getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*(?:channel\/|\/@)/, "");
 var getPlr = () => $("movie_player");
 var getAboveTheFold = () => $("above-the-fold");
 var getActionsBar = () => $("actions")?.querySelector("ytd-menu-renderer");
@@ -300,24 +296,22 @@ var valueSetters = {
     this._ytSettingItem(value, "quality");
   }
 };
-var updateMenuVisibility = async () => {
-  const name = await untilAppear(getChannelName);
+var updateMenuVisibility = (id) => {
   if (menu.btn) {
-    isTheSameChannel = channelName === name;
+    isTheSameChannel = channelName === id;
     menu.btn.style.display = isTheSameChannel ? "flex" : "none";
   } else {
-    channelName = name;
+    channelName = id;
   }
 };
 var delay = (ms) => new Promise((res) => setTimeout(res, ms));
 var onPageChange = async () => {
   if (location.pathname !== "/watch")
     return;
-  await updateMenuVisibility();
-  if (!channelCfg) {
-    const channelUsername = await untilChannelUsernameAppear();
+  const channelUsername = await untilChannelUsernameAppear();
+  updateMenuVisibility(channelUsername);
+  if (!channelCfg)
     channelCfg = cfg.channels[channelUsername] ||= {};
-  }
   const plr = await untilAppear(getPlr);
   await delay(1000);
   const getAd = () => plr.querySelector(".ytp-ad-player-overlay");

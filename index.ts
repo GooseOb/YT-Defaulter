@@ -70,14 +70,12 @@ const cfg: ScriptCfg = cfgLocalStorage
 			},
 	  };
 const isDescendantOrTheSame = (
-	child: Element,
+	child: Element | ParentNode,
 	parents: ParentNode[]
 ): boolean => {
-	if (parents.includes(child)) return true;
-	let node = child.parentNode;
-	while (node !== null) {
-		if (parents.includes(node)) return true;
-		node = node.parentNode;
+	while (child !== null) {
+		if (parents.includes(child)) return true;
+		child = child.parentNode;
 	}
 	return false;
 };
@@ -215,14 +213,12 @@ const menu: Menu = {
 
 const $ = (id: string) => document.getElementById(id);
 
-const getChannelName = () =>
-	new URLSearchParams(location.search).get('ab_channel');
 const getChannelUsername = () =>
 	document
 		.querySelector<HTMLLinkElement>(
 			'span[itemprop="author"] > link[itemprop="url"]'
 		)
-		?.href.replace(/.*\/@/, '');
+		?.href.replace(/.*(?:channel\/|\/@)/, '');
 
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
@@ -360,13 +356,12 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		this._ytSettingItem(value, QUALITY);
 	},
 };
-const updateMenuVisibility = async () => {
-	const name = await untilAppear(getChannelName);
+const updateMenuVisibility = (id: string) => {
 	if (menu.btn) {
-		isTheSameChannel = channelName === name;
+		isTheSameChannel = channelName === id;
 		menu.btn.style.display = isTheSameChannel ? 'flex' : 'none';
 	} else {
-		channelName = name;
+		channelName = id;
 	}
 };
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -375,12 +370,11 @@ const onPageChange = async () => {
 
 	/* ---------------------- apply settings ---------------------- */
 
-	await updateMenuVisibility();
+	const channelUsername = await untilChannelUsernameAppear();
 
-	if (!channelCfg) {
-		const channelUsername = await untilChannelUsernameAppear();
-		channelCfg = cfg.channels[channelUsername] ||= {};
-	}
+	updateMenuVisibility(channelUsername);
+
+	if (!channelCfg) channelCfg = cfg.channels[channelUsername] ||= {};
 
 	const plr = await untilAppear(getPlr);
 	await delay(1_000);
