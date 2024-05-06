@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.8.0
+// @version      1.9.0
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -145,9 +145,7 @@ var until = (getItem, check, msToWait = 1e4, msReqTimeout = 20) => new Promise((
 });
 var untilAppear = (getItem, msToWait) => until(getItem, Boolean, msToWait);
 var ytSettingItems = {};
-var channelCfg;
-var channelName;
-var isTheSameChannel = true;
+var channelConfig = { current: null };
 var video;
 var subtitlesBtn;
 var muteBtn;
@@ -203,7 +201,7 @@ var menu = {
   }
 };
 var $ = (id) => document.getElementById(id);
-var getChannelUsername = () => document.querySelector('span[itemprop="author"] > link[itemprop="url"]')?.href.replace(/.*(?:channel\/|\/@)/, "");
+var getChannelUsername = (aboveTheFold) => aboveTheFold.querySelector(".ytd-channel-name > a").href.match(/(?<=@).+?$/)[0];
 var getPlr = () => $("movie_player");
 var getAboveTheFold = () => $("above-the-fold");
 var getActionsBar = () => $("actions")?.querySelector("ytd-menu-renderer");
@@ -212,8 +210,8 @@ var iconD = {
   ["speed"]: "M10,8v8l6-4L10,8L10,8z M6.3,5L5.7,4.2C7.2,3,9,2.2,11,2l0.1,1C9.3,3.2,7.7,3.9,6.3,5z            M5,6.3L4.2,5.7C3,7.2,2.2,9,2,11 l1,.1C3.2,9.3,3.9,7.7,5,6.3z            M5,17.7c-1.1-1.4-1.8-3.1-2-4.8L2,13c0.2,2,1,3.8,2.2,5.4L5,17.7z            M11.1,21c-1.8-0.2-3.4-0.9-4.8-2 l-0.6,.8C7.2,21,9,21.8,11,22L11.1,21z            M22,12c0-5.2-3.9-9.4-9-10l-0.1,1c4.6,.5,8.1,4.3,8.1,9s-3.5,8.5-8.1,9l0.1,1 C18.2,21.5,22,17.2,22,12z"
 };
 var getYtElementFinder = (elems) => (name) => findInNodeList(elems, (el) => !!el.querySelector(`path[d="${iconD[name]}"]`));
-var untilChannelUsernameAppear = () => untilAppear(getChannelUsername).catch(() => "");
-var isMusicChannel = () => untilAppear(getAboveTheFold).then((el) => !!el.querySelector(".badge-style-type-verified-artist"));
+var untilChannelUsernameAppear = (aboveTheFold) => untilAppear(() => getChannelUsername(aboveTheFold)).catch(() => "");
+var isMusicChannel = (aboveTheFold) => !!aboveTheFold.querySelector(".badge-style-type-verified-artist");
 var findInNodeList = (list, callback) => {
   for (const item of list)
     if (callback(item))
@@ -309,22 +307,14 @@ var valueSetters = {
     this._ytSettingItem(value, "quality");
   }
 };
-var updateMenuVisibility = (id) => {
-  if (menu.btn) {
-    isTheSameChannel = channelName === id;
-    menu.btn.style.display = isTheSameChannel ? "flex" : "none";
-  } else {
-    channelName = id;
-  }
-};
 var delay = (ms) => new Promise((res) => setTimeout(res, ms));
 var onPageChange = async () => {
   if (location.pathname !== "/watch")
     return;
-  const channelUsername = await untilChannelUsernameAppear();
-  updateMenuVisibility(channelUsername);
-  if (!channelCfg)
-    channelCfg = cfg.channels[channelUsername] ||= {};
+  const aboveTheFold = await untilAppear(getAboveTheFold);
+  const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
+  console.log(">>>>>>>>>>>>", channelUsername);
+  channelConfig.current = cfg.channels[channelUsername] ||= {};
   const plr = await untilAppear(getPlr);
   await delay(1000);
   const getAd = () => plr.querySelector(".ytp-ad-player-overlay");
@@ -343,19 +333,18 @@ var onPageChange = async () => {
       if (btn)
         SPEED_NORMAL = btn.textContent;
     });
-  const doNotChangeSpeed = cfg.flags.standardMusicSpeed && await isMusicChannel();
+  const doNotChangeSpeed = cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold);
   const settings = {
     ...cfg.global,
-    ...isTheSameChannel && channelCfg
+    ...channelConfig.current
   };
-  if (isTheSameChannel) {
-    const isChannelSpeed = "speed" in channelCfg;
-    const isChannelCustomSpeed = "customSpeed" in channelCfg;
-    if (doNotChangeSpeed && !isChannelCustomSpeed || isChannelSpeed)
-      delete settings.customSpeed;
-    if (doNotChangeSpeed && !isChannelSpeed)
-      settings.speed = SPEED_NORMAL;
-  } else if (doNotChangeSpeed) {
+  const isChannelSpeed = "speed" in channelConfig.current;
+  const isChannelCustomSpeed = "customSpeed" in channelConfig.current;
+  if (doNotChangeSpeed && !isChannelCustomSpeed || isChannelSpeed)
+    delete settings.customSpeed;
+  if (doNotChangeSpeed && !isChannelSpeed)
+    settings.speed = SPEED_NORMAL;
+  if (doNotChangeSpeed) {
     settings.speed = SPEED_NORMAL;
     delete settings.customSpeed;
   }
@@ -373,8 +362,14 @@ var onPageChange = async () => {
     }
     ytMenu.setOpen(false);
   });
-  if (menu.element)
+  if (menu.element) {
+    const getInput = (name) => $("YTDef-" + name + "-thisChannel");
+    for (const name of ["speed", "customSpeed", "quality", "volume"]) {
+      getInput(name).value = channelConfig.current[name];
+    }
+    getInput("subtitles").checked = channelConfig.current.subtitles;
     return;
+  }
   const div = getElCreator("div"), input = getElCreator("input"), checkbox = (props) => input({ type: "checkbox", ...props }), option = getElCreator("option"), _label = getElCreator("label"), labelEl = (forId, props) => {
     const elem = _label(props);
     elem.setAttribute("for", forId);
@@ -519,7 +514,7 @@ var onPageChange = async () => {
     return section;
   };
   const sections = div({ className: "YTDef-sections" });
-  sections.append(createSection("global", text.GLOBAL, cfg.global), createSection("thisChannel", text.LOCAL, channelCfg));
+  sections.append(createSection("global", text.GLOBAL, cfg.global), createSection("thisChannel", text.LOCAL, channelConfig.current));
   const checkboxDiv = (id, prop, text2) => {
     const cont = div({ className: "check-cont" });
     id = "YTDef-" + id;
@@ -597,7 +592,7 @@ setInterval(() => {
   if (lastHref === location.href)
     return;
   lastHref = location.href;
-  onPageChange();
+  setTimeout(onPageChange, 1000);
 }, 1000);
 var onClick = (e) => {
   const { shortsToUsual, newTab } = cfg.flags;
@@ -640,13 +635,13 @@ document.addEventListener("keyup", (e) => {
   if (e.shiftKey) {
     setting = "quality";
   } else {
-    const value = isTheSameChannel && channelCfg ? channelCfg.customSpeed || !channelCfg.speed && cfg.global.customSpeed : cfg.global.customSpeed;
+    const value = channelConfig.current ? channelConfig.current.customSpeed || !channelConfig.current.speed && cfg.global.customSpeed : cfg.global.customSpeed;
     if (value)
       return valueSetters.customSpeed(value);
     setting = "speed";
   }
   restoreFocusAfter(() => {
-    valueSetters[setting]((isTheSameChannel && channelCfg || cfg.global)[setting]);
+    valueSetters[setting]((channelConfig.current || cfg.global)[setting]);
   });
 }, { capture: true });
 var listener = () => {
