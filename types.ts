@@ -14,8 +14,10 @@ type Dictionary = Record<
 	| 'STANDARD_MUSIC_SPEED'
 	| 'ENHANCED_BITRATE'
 	| 'SAVE'
-	| 'SAVED'
-	| 'DEFAULT',
+	| 'DEFAULT'
+	| 'EXPORT'
+	| 'IMPORT'
+	| 'REFRESH',
 	string
 >;
 type FlagName =
@@ -65,6 +67,10 @@ type YtMenu = {
 	isOpen(): boolean;
 	setOpen(bool: boolean): void;
 	openItem(this: YtMenu, item: YtSettingItem): NodeListOf<HTMLElement>;
+	findInItem(
+		item: YtSettingItem,
+		callback: (item: HTMLElement) => boolean
+	): HTMLElement;
 };
 type Hint = {
 	element: HTMLDivElement;

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.7.1
+// @version      1.8.0
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT

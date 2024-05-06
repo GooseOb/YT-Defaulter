@@ -30,7 +30,9 @@ const translations: Record<string, Partial<Dictionary>> = {
 		STANDARD_MUSIC_SPEED: 'Звычайная хуткасьць на каналах музыкаў',
 		ENHANCED_BITRATE: 'Палепшаны бітрэйт (для карыстальнікаў Premium)',
 		SAVE: 'Захаваць',
-		SAVED: 'Захавана',
+		EXPORT: 'Экспарт',
+		IMPORT: 'Імпарт',
+		REFRESH: 'Зроблена. Абнавіце старонку',
 	},
 };
 const text: Dictionary = {
@@ -49,13 +51,15 @@ const text: Dictionary = {
 	STANDARD_MUSIC_SPEED: 'Normal speed on artist channels',
 	ENHANCED_BITRATE: 'Quality: Enhanced bitrate (for Premium users)',
 	SAVE: 'Save',
-	SAVED: 'Saved',
 	DEFAULT: '-',
+	EXPORT: 'Export',
+	IMPORT: 'Import',
+	REFRESH: 'Done. Refresh the page',
 	...translations[document.documentElement.lang],
 };
 
 const cfgLocalStorage = localStorage[STORAGE_NAME];
-const cfg: ScriptCfg = cfgLocalStorage
+let cfg: ScriptCfg = cfgLocalStorage
 	? JSON.parse(cfgLocalStorage)
 	: {
 			_v: STORAGE_VERSION,
@@ -68,7 +72,7 @@ const cfg: ScriptCfg = cfgLocalStorage
 				standardMusicSpeed: false,
 				enhancedBitrate: false,
 			},
-	  };
+		};
 const isDescendantOrTheSame = (
 	child: Element | ParentNode,
 	parents: ParentNode[]
@@ -93,23 +97,31 @@ const saveCfg = () => {
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
 
-if (cfg._v !== STORAGE_VERSION) {
-	switch (cfg._v) {
-		case 2:
-			cfg.flags.standardMusicSpeed = false;
-			cfg._v = 3;
-		case 3:
-			cfg.global.quality = (cfg.global as any).qualityMax;
-			delete (cfg.global as any).qualityMax;
-			for (const key in cfg.channels) {
-				const currCfg = cfg.channels[key];
-				currCfg.quality = (currCfg as any).qualityMax;
-				delete (currCfg as any).qualityMax;
-			}
-			cfg._v = STORAGE_VERSION;
+/**
+ * Returns if the cfg was updated
+ */
+const updateCfg = () => {
+	const doUpdate = cfg._v !== STORAGE_VERSION;
+	if (doUpdate) {
+		switch (cfg._v) {
+			case 2:
+				cfg.flags.standardMusicSpeed = false;
+				cfg._v = 3;
+			case 3:
+				cfg.global.quality = (cfg.global as any).qualityMax;
+				delete (cfg.global as any).qualityMax;
+				for (const key in cfg.channels) {
+					const currCfg = cfg.channels[key];
+					currCfg.quality = (currCfg as any).qualityMax;
+					delete (currCfg as any).qualityMax;
+				}
+				cfg._v = STORAGE_VERSION;
+		}
+		saveCfg();
 	}
-	saveCfg();
-}
+	return doUpdate;
+};
+updateCfg();
 
 function debounce<TParams extends any[]>(
 	callback: (...args: TParams) => void,
@@ -230,10 +242,13 @@ const iconD = {
 	[SPEED]:
 		'M10,8v8l6-4L10,8L10,8z M6.3,5L5.7,4.2C7.2,3,9,2.2,11,2l0.1,1C9.3,3.2,7.7,3.9,6.3,5z            M5,6.3L4.2,5.7C3,7.2,2.2,9,2,11 l1,.1C3.2,9.3,3.9,7.7,5,6.3z            M5,17.7c-1.1-1.4-1.8-3.1-2-4.8L2,13c0.2,2,1,3.8,2.2,5.4L5,17.7z            M11.1,21c-1.8-0.2-3.4-0.9-4.8-2 l-0.6,.8C7.2,21,9,21.8,11,22L11.1,21z            M22,12c0-5.2-3.9-9.4-9-10l-0.1,1c4.6,.5,8.1,4.3,8.1,9s-3.5,8.5-8.1,9l0.1,1 C18.2,21.5,22,17.2,22,12z',
 } satisfies Record<YtSettingName, string>;
-const getYtElementFinderInArray =
-	<TElem extends HTMLElement>(elems: TElem[]) =>
+const getYtElementFinder =
+	<TElem extends HTMLElement>(elems: NodeListOf<TElem>) =>
 	(name: YtSettingName) =>
-		elems.find((el) => el.querySelector(`path[d="${iconD[name]}"]`));
+		findInNodeList(
+			elems,
+			(el) => !!el.querySelector(`path[d="${iconD[name]}"]`)
+		);
 
 const untilChannelUsernameAppear = () =>
 	untilAppear(getChannelUsername).catch(() => '');
@@ -242,6 +257,13 @@ const isMusicChannel = () =>
 	untilAppear(getAboveTheFold).then(
 		(el) => !!el.querySelector('.badge-style-type-verified-artist')
 	);
+
+const findInNodeList = <T extends HTMLElement>(
+	list: NodeListOf<T>,
+	callback: (item: T) => boolean
+) => {
+	for (const item of list) if (callback(item)) return item;
+};
 
 const ytMenu: YtMenu = {
 	updatePlayer(plr: HTMLElement) {
@@ -267,6 +289,10 @@ const ytMenu: YtMenu = {
 			'.ytp-panel-animate-forward .ytp-menuitem-label'
 		);
 	},
+	findInItem(item, callback) {
+		return findInNodeList(this.openItem(item), callback);
+		// for (const btn of this.openItem(item)) if (callback(btn)) return btn;
+	},
 };
 
 type YtSettingName = typeof SPEED | typeof QUALITY;
@@ -277,8 +303,8 @@ const validateVolume = (value: string) => {
 	return num < 0 || num > 100
 		? 'out of range'
 		: isNaN(num)
-		? 'not a number'
-		: false;
+			? 'not a number'
+			: false;
 };
 
 type Props<T extends HTMLElement> = Partial<T> & object;
@@ -310,15 +336,16 @@ type ValueSetterHelpers = {
 	_ytSettingItem(value: string, settingName: YtSettingName): void;
 };
 type ValueSetters = { [p in Setting]: (value: Cfg[p]) => void };
+
 const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(value, settingName) {
 		const isOpen = ytMenu.isOpen();
 		const compare = comparators[settingName];
-		for (const btn of ytMenu.openItem(ytSettingItems[settingName]))
-			if (compare(value, btn.textContent)) {
-				btn.click();
-				break;
-			}
+		ytMenu
+			.findInItem(ytSettingItems[settingName], (btn) =>
+				compare(value, btn.textContent)
+			)
+			?.click();
 		ytMenu.setOpen(isOpen);
 	},
 	speed(value) {
@@ -385,21 +412,20 @@ const onPageChange = async () => {
 		ytMenu.element.querySelectorAll<YtSettingItem>(
 			'.ytp-menuitem[role="menuitem"]'
 		);
-	const menuItemArr = Array.from(
+	const getYtElement = getYtElementFinder(
 		await until(getMenuItems, (arr) => !!arr.length)
 	);
-	const getYtElement = getYtElementFinderInArray(menuItemArr);
 	Object.assign(ytSettingItems, {
 		quality: getYtElement(QUALITY),
 		speed: getYtElement(SPEED),
 	} satisfies YtSettingItems);
 	if (!SPEED_NORMAL)
 		restoreFocusAfter(() => {
-			for (const { textContent } of ytMenu.openItem(ytSettingItems.speed))
-				if (!+textContent) {
-					SPEED_NORMAL = textContent;
-					break;
-				}
+			const btn = ytMenu.findInItem(
+				ytSettingItems.speed,
+				(btn) => !+btn.textContent
+			);
+			if (btn) SPEED_NORMAL = btn.textContent;
 		});
 	const doNotChangeSpeed =
 		cfg.flags.standardMusicSpeed && (await isMusicChannel());
@@ -656,9 +682,45 @@ const onPageChange = async () => {
 		return cont;
 	};
 
-	type SaveButton = Props<HTMLButtonElement> & {
-		setTextDefer: (text: string) => void;
+	const controlStatus = div();
+	const updateControlStatus = (content: string) => {
+		controlStatus.textContent = `[${new Date().toLocaleTimeString()}] ${content}`;
 	};
+	const controlDiv = div({ className: 'control-cont' });
+	controlDiv.append(
+		button(text.SAVE, {
+			onclick() {
+				saveCfg();
+				updateControlStatus(text.SAVE);
+			},
+		}),
+		button(text.EXPORT, {
+			onclick: () => {
+				navigator.clipboard.writeText(localStorage[STORAGE_NAME]).then(() => {
+					updateControlStatus(text.EXPORT);
+				});
+			},
+		}),
+		button(text.IMPORT, {
+			onclick: async () => {
+				try {
+					const raw = await navigator.clipboard.readText();
+					const newCfg = JSON.parse(raw);
+					if (typeof newCfg !== 'object' || !newCfg._v) {
+						throw new Error('Import: Invalid data');
+					}
+					if (!updateCfg()) {
+						localStorage[STORAGE_NAME] = raw;
+						cfg = newCfg;
+					}
+				} catch (e) {
+					updateControlStatus(e.message);
+					return;
+				}
+				updateControlStatus(text.IMPORT + ': ' + text.REFRESH);
+			},
+		})
+	);
 	menu.element.append(
 		sections,
 		checkboxDiv('shorts', 'shortsToUsual', text.SHORTS),
@@ -670,16 +732,8 @@ const onPageChange = async () => {
 			text.STANDARD_MUSIC_SPEED
 		),
 		checkboxDiv('enhanced-bitrate', 'enhancedBitrate', text.ENHANCED_BITRATE),
-		button(text.SAVE, {
-			setTextDefer: debounce(function (text: string) {
-				this.textContent = text;
-			}, 1000),
-			onclick(this: SaveButton) {
-				saveCfg();
-				this.textContent = text.SAVED;
-				this.setTextDefer(text.SAVE);
-			},
-		} as SaveButton)
+		controlDiv,
+		controlStatus
 	);
 	menu.element.addEventListener('keyup', (e) => {
 		const el = e.target as HTMLInputElement;
@@ -758,7 +812,7 @@ document.addEventListener(
 			const value =
 				isTheSameChannel && channelCfg
 					? channelCfg.customSpeed ||
-					  (!channelCfg.speed && cfg.global.customSpeed)
+						(!channelCfg.speed && cfg.global.customSpeed)
 					: cfg.global.customSpeed;
 			if (value) return valueSetters.customSpeed(value);
 			setting = SPEED;
@@ -802,6 +856,7 @@ text-align: center;
 box-shadow: 0px 4px 32px 0px var(--yt-spec-static-overlay-background-light);
 z-index: 2202
 }
+.control-cont > button {margin: .2rem}
 ${m + d} {display: flex; margin-bottom: 1rem}
 ${m + d + d} {
 flex-direction: column;
