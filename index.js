@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Defaulter
 // @namespace    https://greasyfork.org/ru/users/901750-gooseob
-// @version      1.9.0
+// @version      1.9.1
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
@@ -313,7 +313,6 @@ var onPageChange = async () => {
     return;
   const aboveTheFold = await untilAppear(getAboveTheFold);
   const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
-  console.log(">>>>>>>>>>>>", channelUsername);
   channelConfig.current = cfg.channels[channelUsername] ||= {};
   const plr = await untilAppear(getPlr);
   await delay(1000);

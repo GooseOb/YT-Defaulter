@@ -387,7 +387,6 @@ const onPageChange = async () => {
 	const aboveTheFold = await untilAppear(getAboveTheFold);
 	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
 
-	console.log('>>>>>>>>>>>>', channelUsername);
 	channelConfig.current = cfg.channels[channelUsername] ||= {};
 
 	const plr = await untilAppear(getPlr);
