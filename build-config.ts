@@ -10,8 +10,8 @@ let tmp;
 while ((tmp = pattern.exec(raw))) define[tmp[1]] = tmp[2];
 
 export default {
+	naming: 'dist.js',
 	define,
-	naming: 'index.js',
 	userscript: {
 		logErrors: !process.argv.includes('--build'),
 	},
