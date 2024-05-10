@@ -12,7 +12,8 @@
 	"license": "MIT",
 	"scripts": {
 		"dev": "build-userscript --cfg build-config.ts",
-		"build": "build-userscript --cfg build-config.ts --build"
+		"build": "build-userscript --cfg build-config.ts --build",
+		"app:version": "echo $npm_package_version"
 	},
 	"type": "module",
 	"devDependencies": {

@@ -18,7 +18,8 @@ jobs:
       - uses: oven-sh/setup-bun@v1
       - run: bun i --frozen-lockfile
       - run: bun run build
+      - run: echo "SCRIPT_VERSION=$(jq -r .version package.json)" >> $GITHUB_ENV
       - uses: ncipollo/release-action@v1
         with:
           artifacts: 'dist/*'
-          tag: ${{ github.event.release.tag_name }}
+          tag: v${{ env.SCRIPT_VERSION }}
