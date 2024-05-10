@@ -3,9 +3,11 @@ import { BunBuildUserscriptConfig } from 'bun-build-userscript';
 
 const define: Record<string, string> = {};
 
-const raw = (await readFile('index.ts', 'utf8')).match(/declare const.+?;/s)[0];
+const raw = (await readFile('index.ts', 'utf8')).match(
+	/declare const[^;]+?;/
+)[0];
 
-const pattern = /(\S+): (\S+)[,;]/g;
+const pattern = /(\S+):\s*([^,;]+)/g;
 
 let tmp;
 while ((tmp = pattern.exec(raw))) define[tmp[1]] = tmp[2];
