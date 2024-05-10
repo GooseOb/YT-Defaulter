@@ -225,9 +225,9 @@ const $ = <T extends HTMLElement>(id: string) =>
 	document.getElementById(id) as T;
 
 const getChannelUsername = (aboveTheFold: HTMLElement) =>
-	aboveTheFold
-		.querySelector<HTMLAnchorElement>('.ytd-channel-name > a')
-		.href.match(/(?<=@|\/c\/).+?$/)[0];
+	/(?<=@|\/c\/).+?$/.exec(
+		aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a').href
+	)[0];
 
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
@@ -286,7 +286,6 @@ const ytMenu: YtMenu = {
 	},
 	findInItem(item, callback) {
 		return findInNodeList(this.openItem(item), callback);
-		// for (const btn of this.openItem(item)) if (callback(btn)) return btn;
 	},
 };
 

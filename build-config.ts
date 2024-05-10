@@ -3,9 +3,7 @@ import { BunBuildUserscriptConfig } from 'bun-build-userscript';
 
 const define: Record<string, string> = {};
 
-const raw = (await readFile('index.ts', 'utf8')).match(
-	/declare const[^;]+?;/
-)[0];
+const raw = /declare const[^;]+?;/.exec(await readFile('index.ts', 'utf8'))[0];
 
 const pattern = /(\S+):\s*([^,;]+)/g;
 
