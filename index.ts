@@ -227,7 +227,7 @@ const $ = <T extends HTMLElement>(id: string) =>
 const getChannelUsername = (aboveTheFold: HTMLElement) =>
 	aboveTheFold
 		.querySelector<HTMLAnchorElement>('.ytd-channel-name > a')
-		.href.match(/(?<=@).+?$/)[0];
+		.href.match(/(?<=@|\/c\/).+?$/)[0];
 
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
