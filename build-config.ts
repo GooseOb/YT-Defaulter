@@ -10,7 +10,7 @@ let tmp;
 while ((tmp = pattern.exec(raw))) define[tmp[1]] = tmp[2];
 
 export default {
-	naming: 'dist.js',
+	naming: 'dist/dist.js',
 	define,
 	userscript: {
 		logErrors: !process.argv.includes('--build'),
