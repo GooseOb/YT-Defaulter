@@ -261,13 +261,13 @@ const findInNodeList = <T extends HTMLElement>(
 };
 
 const ytMenu: YtMenu = {
-	updatePlayer(plr: HTMLElement) {
+	async updatePlayer(plr: HTMLElement) {
 		this.element = plr.querySelector('.ytp-settings-menu');
 		this._btn = plr.querySelector('.ytp-settings-button');
-		restoreFocusAfter(() => {
-			this._btn.click();
-			this._btn.click();
-		});
+		const clickBtn = this._btn.click.bind(this._btn);
+		restoreFocusAfter(clickBtn);
+		await delay(50);
+		restoreFocusAfter(clickBtn);
 	},
 	element: null,
 	_btn: null,
@@ -392,7 +392,7 @@ const onPageChange = async () => {
 	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	if (getAd()) await until(getAd, (ad) => !ad, 200_000);
-	ytMenu.updatePlayer(plr);
+	await ytMenu.updatePlayer(plr);
 	const getMenuItems = () =>
 		ytMenu.element.querySelectorAll<YtSettingItem>(
 			'.ytp-menuitem[role="menuitem"]'

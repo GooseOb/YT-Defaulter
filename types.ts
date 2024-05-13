@@ -63,7 +63,7 @@ type YtSettingItem = HTMLDivElement & { role: 'menuitem' };
 type YtMenu = {
 	element: HTMLElement & ParentNode;
 	_btn: HTMLElement;
-	updatePlayer(plr: HTMLElement): void;
+	updatePlayer(plr: HTMLElement): Promise<void>;
 	isOpen(): boolean;
 	setOpen(bool: boolean): void;
 	openItem(this: YtMenu, item: YtSettingItem): NodeListOf<HTMLElement>;
