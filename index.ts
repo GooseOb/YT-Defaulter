@@ -783,7 +783,7 @@ document.addEventListener(
 	'keyup',
 	(e) => {
 		if (e.code === 'Enter') return onClick(e);
-		if (!e.ctrlKey) return;
+		if (!e.ctrlKey || e.shiftKey) return;
 		if (cfg.flags.copySubs && e.code === 'KeyC') {
 			const plr = document.querySelector('.html5-video-player');
 			if (!plr?.classList.contains('ytp-fullscreen')) return;
@@ -797,21 +797,13 @@ document.addEventListener(
 		if (e.code !== 'Space') return;
 		e.stopPropagation();
 		e.preventDefault();
-		let setting: YTSetting;
-		if (e.shiftKey) {
-			setting = QUALITY;
-		} else {
-			const value = channelConfig.current
-				? channelConfig.current.customSpeed ||
-					(!channelConfig.current.speed && cfg.global.customSpeed)
-				: cfg.global.customSpeed;
-			if (value) return valueSetters.customSpeed(value);
-			setting = SPEED;
-		}
+		const customSpeedValue = channelConfig.current
+			? channelConfig.current.customSpeed ||
+				(!channelConfig.current.speed && cfg.global.customSpeed)
+			: cfg.global.customSpeed;
+		if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 		restoreFocusAfter(() => {
-			valueSetters[setting](
-				(channelConfig.current || cfg.global)[setting] as never
-			);
+			valueSetters[SPEED]((channelConfig.current || cfg.global)[SPEED]);
 		});
 	},
 	{ capture: true }
