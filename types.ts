@@ -16,8 +16,7 @@ type Dictionary = Record<
 	| 'SAVE'
 	| 'DEFAULT'
 	| 'EXPORT'
-	| 'IMPORT'
-	| 'REFRESH',
+	| 'IMPORT',
 	string
 >;
 type FlagName =

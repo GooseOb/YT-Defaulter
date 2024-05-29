@@ -32,7 +32,6 @@ const translations: Record<string, Partial<Dictionary>> = {
 		SAVE: 'Захаваць',
 		EXPORT: 'Экспарт',
 		IMPORT: 'Імпарт',
-		REFRESH: 'Зроблена. Абнавіце старонку',
 	},
 };
 const text: Dictionary = {
@@ -54,7 +53,6 @@ const text: Dictionary = {
 	DEFAULT: '-',
 	EXPORT: 'Export',
 	IMPORT: 'Import',
-	REFRESH: 'Done. Refresh the page',
 	...translations[document.documentElement.lang],
 };
 
@@ -95,6 +93,54 @@ const saveCfg = () => {
 	cfgCopy.channels = channelsCfgCopy;
 
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
+};
+
+const updateValuesIn = (
+	controls: Record<Setting, HTMLSelectElement | HTMLInputElement>,
+	cfgPart: Cfg
+) => {
+	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
+	controls[CUSTOM_SPEED].value = cfgPart[CUSTOM_SPEED] || '';
+	controls[QUALITY].value = cfgPart[QUALITY] || text.DEFAULT;
+	controls[VOLUME].value = cfgPart[VOLUME] || '';
+	(controls[SUBTITLES] as HTMLInputElement).checked =
+		cfgPart[SUBTITLES] || false;
+};
+
+const menuControls = {
+	global: {
+		[SPEED]: null as HTMLSelectElement,
+		[CUSTOM_SPEED]: null as HTMLInputElement,
+		[QUALITY]: null as HTMLSelectElement,
+		[VOLUME]: null as HTMLInputElement,
+		[SUBTITLES]: null as HTMLInputElement,
+	} satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>,
+	thisChannel: {
+		[SPEED]: null as HTMLSelectElement,
+		[CUSTOM_SPEED]: null as HTMLInputElement,
+		[QUALITY]: null as HTMLSelectElement,
+		[VOLUME]: null as HTMLInputElement,
+		[SUBTITLES]: null as HTMLInputElement,
+	} satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>,
+	flags: {
+		shortsToUsual: null as HTMLInputElement,
+		newTab: null as HTMLInputElement,
+		copySubs: null as HTMLInputElement,
+		standardMusicSpeed: null as HTMLInputElement,
+		enhancedBitrate: null as HTMLInputElement,
+	} satisfies Record<FlagName, HTMLInputElement>,
+	updateThisChannel() {
+		updateValuesIn(this.thisChannel, channelConfig.current);
+	},
+	updateValues() {
+		console.log(cfg.global, channelConfig.current, cfg.flags);
+		console.log(this);
+		updateValuesIn(this.global, cfg.global);
+		this.updateThisChannel();
+		for (const key in cfg.flags) {
+			this.flags[key as FlagName].checked = cfg.flags[key as FlagName];
+		}
+	},
 };
 
 /**
@@ -445,12 +491,7 @@ const onPageChange = async () => {
 	/* ---------------------- settings menu ---------------------- */
 
 	if (menu.element) {
-		const getInput = (name: string) =>
-			$<HTMLInputElement>(PREFIX + name + '-thisChannel');
-		for (const name of [SPEED, CUSTOM_SPEED, QUALITY, VOLUME]) {
-			getInput(name).value = channelConfig.current[name];
-		}
-		getInput(SUBTITLES).checked = channelConfig.current.subtitles;
+		menuControls.updateThisChannel();
 		return;
 	}
 
@@ -534,7 +575,7 @@ const onPageChange = async () => {
 	];
 
 	const createSection = (
-		sectionId: string,
+		sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,
 		title: string,
 		sectionCfg: Cfg
 	): HTMLDivElement => {
@@ -568,6 +609,8 @@ const onPageChange = async () => {
 				});
 			item.append(label, elem);
 			section.append(item);
+			// @ts-ignore
+			menuControls[sectionId][name] = elem;
 			if (elem.hint) section.append(elem.hint.element);
 			return { elem };
 		};
@@ -661,16 +704,15 @@ const onPageChange = async () => {
 	): HTMLDivElement => {
 		const cont = div({ className: 'check-cont' });
 		id = PREFIX + id;
-		cont.append(
-			labelEl(id, { textContent: text }),
-			checkbox({
-				id,
-				checked: cfg.flags[prop],
-				onclick(this: HTMLInputElement) {
-					cfg.flags[prop] = this.checked;
-				},
-			})
-		);
+		const elem = checkbox({
+			id,
+			checked: cfg.flags[prop],
+			onclick(this: HTMLInputElement) {
+				cfg.flags[prop] = this.checked;
+			},
+		});
+		menuControls.flags[prop] = elem;
+		cont.append(labelEl(id, { textContent: text }), elem);
 		return cont;
 	};
 
@@ -705,11 +747,13 @@ const onPageChange = async () => {
 						localStorage[STORAGE_NAME] = raw;
 						cfg = newCfg;
 					}
+					channelConfig.current = cfg.channels[channelUsername] ||= {};
 				} catch (e) {
 					updateControlStatus(e.message);
 					return;
 				}
-				updateControlStatus(text.IMPORT + ': ' + text.REFRESH);
+				updateControlStatus(text.IMPORT);
+				menuControls.updateValues();
 			},
 		})
 	);
