@@ -144,7 +144,7 @@ const menuControls = {
 };
 
 /**
- * Returns if the cfg was updated
+ *  @returns if the cfg was updated
  */
 const updateCfg = () => {
 	const doUpdate = cfg._v !== STORAGE_VERSION;
@@ -273,7 +273,7 @@ const $ = <T extends HTMLElement>(id: string) =>
 const getChannelUsername = (aboveTheFold: HTMLElement) =>
 	/(?<=@|\/c\/).+?$/.exec(
 		aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a').href
-	)[0];
+	)?.[0];
 
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
@@ -307,7 +307,7 @@ const findInNodeList = <T extends HTMLElement>(
 };
 
 const ytMenu: YtMenu = {
-	async updatePlayer(plr: HTMLElement) {
+	async updatePlayer(plr) {
 		this.element = plr.querySelector('.ytp-settings-menu');
 		this._btn = plr.querySelector('.ytp-settings-button');
 		const clickBtn = this._btn.click.bind(this._btn);
@@ -423,6 +423,52 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		this._ytSettingItem(value, QUALITY);
 	},
 };
+const div = getElCreator('div'),
+	input = getElCreator('input'),
+	checkbox = <T extends Props<HTMLInputElement>>(props?: T) =>
+		input({ type: 'checkbox', ...props }),
+	option = getElCreator('option'),
+	_label = getElCreator('label'),
+	labelEl = <T extends Props<HTMLLabelElement>>(forId: string, props?: T) => {
+		const elem = _label(props);
+		elem.setAttribute('for', forId);
+		return elem;
+	},
+	selectEl = getElCreator('select'),
+	btnClass = 'yt-spec-button-shape-next',
+	btnClassFocused = btnClass + '--focused',
+	_button = getElCreator('button'),
+	button = <T extends Props<HTMLButtonElement>>(text: string, props?: T) =>
+		_button({
+			textContent: text,
+			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
+			onfocus(this: HTMLButtonElement) {
+				this.classList.add(btnClassFocused);
+			},
+			onblur(this: HTMLButtonElement) {
+				this.classList.remove(btnClassFocused);
+			},
+			...props,
+		});
+
+class Hint<TProps extends Props<HTMLDivElement> = any> {
+	constructor(prefix: string, props?: TProps) {
+		this.element = div(props);
+		this.element.className ||= SETTING_HINT_CLASS;
+		this.prefix = prefix;
+		this.hide();
+	}
+	hide(): void {
+		this.element.style.display = 'none';
+	}
+	show(msg?: string): void {
+		this.element.style.display = 'block';
+		if (msg) this.element.textContent = this.prefix + msg;
+	}
+	private prefix: string;
+	element: HTMLElement;
+}
+
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
@@ -495,32 +541,6 @@ const onPageChange = async () => {
 		return;
 	}
 
-	const div = getElCreator('div'),
-		input = getElCreator('input'),
-		checkbox = <T extends Props<HTMLInputElement>>(props?: T) =>
-			input({ type: 'checkbox', ...props }),
-		option = getElCreator('option'),
-		_label = getElCreator('label'),
-		labelEl = <T extends Props<HTMLLabelElement>>(forId: string, props?: T) => {
-			const elem = _label(props);
-			elem.setAttribute('for', forId);
-			return elem;
-		},
-		selectEl = getElCreator('select'),
-		btnClass = 'yt-spec-button-shape-next',
-		_button = getElCreator('button'),
-		button = <T extends Props<HTMLButtonElement>>(text: string, props?: T) =>
-			_button({
-				textContent: text,
-				className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
-				onfocus(this: HTMLButtonElement) {
-					this.classList.add(btnClass + '--focused');
-				},
-				onblur(this: HTMLButtonElement) {
-					this.classList.remove(btnClass + '--focused');
-				},
-				...props,
-			});
 	menu.element = div({
 		id: MENU_ID,
 	});
@@ -627,26 +647,6 @@ const onPageChange = async () => {
 		};
 
 		section.append(getElCreator('span')({ textContent: title, id: sectionId }));
-		const createHint = <TProps extends Props<HTMLDivElement>>(
-			prefix: string,
-			props?: TProps
-		) => {
-			const obj: Hint = {
-				element: div({
-					className: SETTING_HINT_CLASS,
-					...props,
-				}),
-				hide() {
-					this.element.style.display = 'none';
-				},
-				show(msg?: string) {
-					this.element.style.display = 'block';
-					if (msg) this.element.textContent = prefix + msg;
-				},
-			};
-			obj.hide();
-			return obj;
-		};
 		const firstElement = addSelectItem(
 			SPEED,
 			text.SPEED,
@@ -665,7 +665,7 @@ const onPageChange = async () => {
 				onblur(this: InputWithHint) {
 					this.hint.hide();
 				},
-				hint: createHint(null, { textContent: text.CUSTOM_SPEED_HINT }),
+				hint: new Hint('', { textContent: text.CUSTOM_SPEED_HINT }),
 			})
 		);
 		addSelectItem(QUALITY, text.QUALITY, qualityValues, (val) => val + 'p');
@@ -685,7 +685,7 @@ const onPageChange = async () => {
 						this.hint.hide();
 					}
 				},
-				hint: createHint('Warning: '),
+				hint: new Hint('Warning: '),
 			})
 		);
 		addItem(SUBTITLES, text.SUBTITLES, checkbox());

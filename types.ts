@@ -71,9 +71,4 @@ type YtMenu = {
 		callback: (item: HTMLElement) => boolean
 	): HTMLElement;
 };
-type Hint = {
-	element: HTMLDivElement;
-	hide(): void;
-	show(msg?: string): void;
-};
 type InputWithHint = HTMLInputElement & { hint: Hint };
