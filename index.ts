@@ -19,7 +19,7 @@ const translations: Record<string, Partial<Dictionary>> = {
 		SPEED: 'Хуткасьць',
 		CUSTOM_SPEED: 'Свая хуткасьць',
 		CUSTOM_SPEED_HINT:
-			'Калі вызначана, будзе выкарыстоўвацца замест "хуткасьць"',
+			'Калі вызначана, будзе выкарыстоўвацца замест "Хуткасьць"',
 		QUALITY: 'Якасьць',
 		VOLUME: 'Гучнасьць, %',
 		GLOBAL: 'глябальна',
@@ -39,7 +39,7 @@ const text: Dictionary = {
 	SUBTITLES: 'Subtitles',
 	SPEED: 'Speed',
 	CUSTOM_SPEED: 'Custom speed',
-	CUSTOM_SPEED_HINT: 'If defined, will be used instead of "speed"',
+	CUSTOM_SPEED_HINT: 'If defined, will be used instead of "Speed"',
 	QUALITY: 'Quality',
 	VOLUME: 'Volume, %',
 	GLOBAL: 'global',
@@ -70,7 +70,7 @@ let cfg: ScriptCfg = cfgLocalStorage
 				standardMusicSpeed: false,
 				enhancedBitrate: false,
 			},
-		};
+	  };
 const isDescendantOrTheSame = (
 	child: Element | ParentNode,
 	parents: ParentNode[]
@@ -133,8 +133,6 @@ const menuControls = {
 		updateValuesIn(this.thisChannel, channelConfig.current);
 	},
 	updateValues() {
-		console.log(cfg.global, channelConfig.current, cfg.flags);
-		console.log(this);
 		updateValuesIn(this.global, cfg.global);
 		this.updateThisChannel();
 		for (const key in cfg.flags) {
@@ -194,18 +192,20 @@ const until = <T>(
 	msReqTimeout = 20
 ) =>
 	new Promise<T>((res, rej) => {
+		const item = getItem();
+		if (check(item)) return res(item);
 		const reqLimit = msToWait / msReqTimeout;
 		let i = 0;
 		const interval = setInterval(() => {
-			if (i++ > reqLimit) exit(rej);
 			const item = getItem();
-			if (!check(item)) return;
-			exit(() => res(item));
+			if (check(item)) {
+				clearInterval(interval);
+				res(item);
+			} else if (++i > reqLimit) {
+				clearInterval(interval);
+				rej();
+			}
 		}, msReqTimeout);
-		const exit = (cb: () => void) => {
-			clearInterval(interval);
-			cb();
-		};
 	});
 
 const untilAppear = <T>(getItem: () => T, msToWait?: number) =>
@@ -227,13 +227,13 @@ const menu: Menu = {
 	_closeListener: {
 		onClick(e: Event) {
 			const el = e.target as HTMLElement;
-			if (isDescendantOrTheSame(el, [menu.element, menu.btn])) return;
-			menu.toggle();
+			if (!isDescendantOrTheSame(el, [menu.element, menu.btn])) menu.toggle();
 		},
-		onKeyUp(e) {
-			if (e.code !== 'Escape') return;
-			menu._setOpen(false);
-			menu.btn.focus();
+		onKeyUp(e: KeyboardEvent) {
+			if (e.code === 'Escape') {
+				menu._setOpen(false);
+				menu.btn.focus();
+			}
 		},
 		add() {
 			document.addEventListener('click', this.onClick);
@@ -343,8 +343,8 @@ const validateVolume = (value: string) => {
 	return num < 0 || num > 100
 		? 'out of range'
 		: isNaN(num)
-			? 'not a number'
-			: false;
+		? 'not a number'
+		: false;
 };
 
 type Props<T extends HTMLElement> = Partial<T> & object;
@@ -361,12 +361,11 @@ const comparators: Record<YtSettingName, Comparator> = {
 	[SPEED]: (target, current) => target === current,
 };
 const logger = {
-	prefix: '[YT-Defaulter]',
 	// log(...msgs: string[]) {
-	// 	console.log(this.prefix, ...msgs);
+	// 	console.log('[YT-Defaulter]', ...msgs);
 	// },
 	err(...msgs: string[]) {
-		console.error(this.prefix, ...msgs);
+		console.error('[YT-Defaulter]', ...msgs);
 	},
 	outOfRange(what: string) {
 		this.err(what, 'value is out of range');
@@ -410,13 +409,13 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		const isMuted = muteBtn.dataset.titleNoTooltip !== 'Mute';
 		if (num === 0) {
 			if (!isMuted) muteBtn.click();
-			return;
-		}
-		if (isMuted) muteBtn.click();
-		try {
-			video.volume = num / 100;
-		} catch {
-			logger.outOfRange('Volume');
+		} else {
+			if (isMuted) muteBtn.click();
+			try {
+				video.volume = num / 100;
+			} catch {
+				logger.outOfRange('Volume');
+			}
 		}
 	},
 	quality(value) {
@@ -483,7 +482,7 @@ const onPageChange = async () => {
 	const plr = await untilAppear(getPlr);
 	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
-	if (getAd()) await until(getAd, (ad) => !ad, 200_000);
+	await until(getAd, (ad) => !ad, 200_000);
 	await ytMenu.updatePlayer(plr);
 	const getMenuItems = () =>
 		ytMenu.element.querySelectorAll<YtSettingItem>(
@@ -801,14 +800,15 @@ const onPageChange = async () => {
 
 let lastHref: string;
 setInterval(() => {
-	if (lastHref === location.href) return;
-	lastHref = location.href;
-	setTimeout(onPageChange, 1_000);
+	if (lastHref !== location.href) {
+		lastHref = location.href;
+		setTimeout(onPageChange, 1_000);
+	}
 }, 1_000);
 
 const onClick = (e: Event) => {
 	const { shortsToUsual, newTab } = cfg.flags;
-	if (!shortsToUsual && !newTab) return;
+	if (!(shortsToUsual || newTab)) return;
 	let el = e.target as HTMLAnchorElement;
 	if (el.tagName !== 'A') {
 		el = el.closest('a');
@@ -836,19 +836,18 @@ document.addEventListener(
 				(line) => line.textContent
 			).join(' ');
 			navigator.clipboard.writeText(text);
-			return;
+		} else if (e.code === 'Space') {
+			e.stopPropagation();
+			e.preventDefault();
+			const customSpeedValue = channelConfig.current
+				? channelConfig.current.customSpeed ||
+				  (!channelConfig.current.speed && cfg.global.customSpeed)
+				: cfg.global.customSpeed;
+			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
+			restoreFocusAfter(() => {
+				valueSetters[SPEED]((channelConfig.current || cfg.global)[SPEED]);
+			});
 		}
-		if (e.code !== 'Space') return;
-		e.stopPropagation();
-		e.preventDefault();
-		const customSpeedValue = channelConfig.current
-			? channelConfig.current.customSpeed ||
-				(!channelConfig.current.speed && cfg.global.customSpeed)
-			: cfg.global.customSpeed;
-		if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
-		restoreFocusAfter(() => {
-			valueSetters[SPEED]((channelConfig.current || cfg.global)[SPEED]);
-		});
 	},
 	{ capture: true }
 );
