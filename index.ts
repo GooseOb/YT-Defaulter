@@ -70,7 +70,7 @@ let cfg: ScriptCfg = cfgLocalStorage
 				standardMusicSpeed: false,
 				enhancedBitrate: false,
 			},
-	  };
+		};
 const isDescendantOrTheSame = (
 	child: Element | ParentNode,
 	parents: ParentNode[]
@@ -107,21 +107,18 @@ const updateValuesIn = (
 		cfgPart[SUBTITLES] || false;
 };
 
+const channelControls = () =>
+	({
+		[SPEED]: null as HTMLSelectElement,
+		[CUSTOM_SPEED]: null as HTMLInputElement,
+		[QUALITY]: null as HTMLSelectElement,
+		[VOLUME]: null as HTMLInputElement,
+		[SUBTITLES]: null as HTMLInputElement,
+	}) satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>;
+
 const menuControls = {
-	global: {
-		[SPEED]: null as HTMLSelectElement,
-		[CUSTOM_SPEED]: null as HTMLInputElement,
-		[QUALITY]: null as HTMLSelectElement,
-		[VOLUME]: null as HTMLInputElement,
-		[SUBTITLES]: null as HTMLInputElement,
-	} satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>,
-	thisChannel: {
-		[SPEED]: null as HTMLSelectElement,
-		[CUSTOM_SPEED]: null as HTMLInputElement,
-		[QUALITY]: null as HTMLSelectElement,
-		[VOLUME]: null as HTMLInputElement,
-		[SUBTITLES]: null as HTMLInputElement,
-	} satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>,
+	global: channelControls(),
+	thisChannel: channelControls(),
 	flags: {
 		shortsToUsual: null as HTMLInputElement,
 		newTab: null as HTMLInputElement,
@@ -343,8 +340,8 @@ const validateVolume = (value: string) => {
 	return num < 0 || num > 100
 		? 'out of range'
 		: isNaN(num)
-		? 'not a number'
-		: false;
+			? 'not a number'
+			: false;
 };
 
 type Props<T extends HTMLElement> = Partial<T> & object;
@@ -374,7 +371,7 @@ const logger = {
 type ValueSetterHelpers = {
 	_ytSettingItem(value: string, settingName: YtSettingName): void;
 };
-type ValueSetters = { [p in Setting]: (value: Cfg[p]) => void };
+type ValueSetters = { [P in Setting]: (value: Cfg[P]) => void };
 
 const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(value, settingName) {
@@ -841,7 +838,7 @@ document.addEventListener(
 			e.preventDefault();
 			const customSpeedValue = channelConfig.current
 				? channelConfig.current.customSpeed ||
-				  (!channelConfig.current.speed && cfg.global.customSpeed)
+					(!channelConfig.current.speed && cfg.global.customSpeed)
 				: cfg.global.customSpeed;
 			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 			restoreFocusAfter(() => {
