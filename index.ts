@@ -434,9 +434,12 @@ const div = getElCreator('div'),
 	btnClass = 'yt-spec-button-shape-next',
 	btnClassFocused = btnClass + '--focused',
 	_button = getElCreator('button'),
-	button = <T extends Props<HTMLButtonElement>>(text: string, props?: T) =>
+	button = <T extends Props<HTMLButtonElement>>(
+		textContent: string,
+		props?: T
+	) =>
 		_button({
-			textContent: text,
+			textContent,
 			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
 			onfocus(this: HTMLButtonElement) {
 				this.classList.add(btnClassFocused);
@@ -553,20 +556,18 @@ const onPageChange = async () => {
 		getText: (arg: string) => string
 	) => HTMLOptionElement[];
 
-	const toOptions: ToOptions = (values, getText) =>
-		[
+	const toOptions: ToOptions = (values, getText) => [
+		option({
+			value: text.DEFAULT,
+			textContent: text.DEFAULT,
+		}),
+		...values.map((value) =>
 			option({
-				value: text.DEFAULT,
-				textContent: text.DEFAULT,
-			}),
-		].concat(
-			values.map((value) =>
-				option({
-					value: value,
-					textContent: getText(value),
-				})
-			)
-		);
+				value,
+				textContent: getText(value),
+			})
+		),
+	];
 
 	const speedValues = [
 		'2',
@@ -611,7 +612,7 @@ const onPageChange = async () => {
 			const valueProp = elem.type === 'checkbox' ? 'checked' : 'value';
 			Object.assign(elem, {
 				id,
-				name: name,
+				name,
 				onchange(this: TElem & { checked: boolean; value: string }) {
 					const value: Cfg[Setting] = this[valueProp];
 					if (value === '' || value === text.DEFAULT) delete sectionCfg[name];
@@ -696,7 +697,7 @@ const onPageChange = async () => {
 	const checkboxDiv = (
 		id: string,
 		prop: FlagName,
-		text: string
+		textContent: string
 	): HTMLDivElement => {
 		const cont = div({ className: 'check-cont' });
 		id = PREFIX + id;
@@ -708,7 +709,7 @@ const onPageChange = async () => {
 			},
 		});
 		menuControls.flags[prop] = elem;
-		cont.append(labelEl(id, { textContent: text }), elem);
+		cont.append(labelEl(id, { textContent }), elem);
 		return cont;
 	};
 
