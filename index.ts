@@ -198,7 +198,7 @@ const until = <T>(
 				res(item);
 			} else if (++i > reqLimit) {
 				clearInterval(interval);
-				rej();
+				rej("Timeout: item wasn't found");
 			}
 		}, msReqTimeout);
 	});
