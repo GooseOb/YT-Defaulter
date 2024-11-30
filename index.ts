@@ -211,7 +211,7 @@ let video: HTMLVideoElement,
 	subtitlesBtn: HTMLButtonElement,
 	muteBtn: HTMLButtonElement,
 	SPEED_NORMAL: string,
-	isSpeedChanged = false;
+	isSpeedApplied = false;
 
 type Focusable = { focus(): void };
 
@@ -382,17 +382,17 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		ytMenu.setOpen(isOpen);
 	},
 	speed(value) {
-		this._ytSettingItem(isSpeedChanged ? SPEED_NORMAL : value, SPEED);
-		isSpeedChanged = !isSpeedChanged;
+		this._ytSettingItem(isSpeedApplied ? SPEED_NORMAL : value, SPEED);
+		isSpeedApplied = !isSpeedApplied;
 	},
 	customSpeed(value) {
 		try {
-			video.playbackRate = isSpeedChanged ? 1 : +value;
+			video.playbackRate = isSpeedApplied ? 1 : +value;
 		} catch {
 			logger.outOfRange('Custom speed');
 			return;
 		}
-		isSpeedChanged = !isSpeedChanged;
+		isSpeedApplied = !isSpeedApplied;
 	},
 	subtitles(value) {
 		if (subtitlesBtn.ariaPressed !== value.toString()) subtitlesBtn.click();
@@ -508,14 +508,14 @@ const onPageChange = async () => {
 	}
 	const { customSpeed } = settings;
 	delete settings.customSpeed;
-	isSpeedChanged = false;
+	isSpeedApplied = false;
 	video ||= plr.querySelector('.html5-main-video');
 	subtitlesBtn ||= plr.querySelector('.ytp-subtitles-button');
 	restoreFocusAfter(() => {
 		for (const setting in settings)
 			valueSetters[setting as Setting](settings[setting as never]);
 		if (!isNaN(+customSpeed)) {
-			isSpeedChanged = false;
+			isSpeedApplied = false;
 			valueSetters.customSpeed(customSpeed);
 		}
 		ytMenu.setOpen(false);
