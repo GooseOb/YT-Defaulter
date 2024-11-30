@@ -34,5 +34,6 @@ type ScriptCfg = {
 };
 type YtSettingItem = HTMLDivElement & { role: 'menuitem' };
 type InputWithHint = HTMLInputElement & { hint: Hint };
+type ReadonlyInputWithHint = DeepReadonly<HTMLInputElement & { hint: Hint }>;
 type Control = HTMLSelectElement | HTMLInputElement;
 type SettingControls = Record<Setting, Control>;

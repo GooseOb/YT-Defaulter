@@ -348,8 +348,8 @@ const validateVolume = (value: string) => {
 type Props<T extends HTMLElement> = Partial<T> & object;
 const getElCreator =
 	<TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
-	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(
-		props?: DeepReadonly<TProps>
+	<TProps extends DeepReadonly<Props<HTMLElementTagNameMap[TTag]>>>(
+		props?: TProps
 	) =>
 		Object.assign(document.createElement(tag), props);
 type Comparator = (target: string, current: string) => boolean;
@@ -650,10 +650,10 @@ const onPageChange = async () => {
 			text.CUSTOM_SPEED,
 			input({
 				type: 'number',
-				onfocus(this: InputWithHint) {
+				onfocus(this: ReadonlyInputWithHint) {
 					this.hint.show();
 				},
-				onblur(this: InputWithHint) {
+				onblur(this: ReadonlyInputWithHint) {
 					this.hint.hide();
 				},
 				hint: new Hint('', { textContent: text.CUSTOM_SPEED_HINT }),
@@ -667,7 +667,7 @@ const onPageChange = async () => {
 				type: 'number',
 				min: '0',
 				max: '100',
-				oninput(this: InputWithHint) {
+				oninput(this: ReadonlyInputWithHint) {
 					settings.volume = this.value;
 					const warning = validateVolume(this.value);
 					if (warning) {
