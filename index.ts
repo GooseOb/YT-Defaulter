@@ -12,7 +12,9 @@ declare const STORAGE_NAME: 'YTDefaulter',
 	QUALITY: 'quality',
 	VOLUME: 'volume';
 
-const translations: Record<string, Partial<Dictionary>> = {
+const override = Object.assign as <T>(a: T, b: Partial<T>) => T;
+
+const translations: Record<string, Partial<typeof text>> = {
 	'be-BY': {
 		OPEN_SETTINGS: 'Адкрыць дадатковыя налады',
 		SUBTITLES: 'Субтытры',
@@ -34,7 +36,7 @@ const translations: Record<string, Partial<Dictionary>> = {
 		IMPORT: 'Імпарт',
 	},
 };
-const text: Dictionary = {
+const text = {
 	OPEN_SETTINGS: 'Open additional settings',
 	SUBTITLES: 'Subtitles',
 	SPEED: 'Speed',
@@ -53,8 +55,8 @@ const text: Dictionary = {
 	DEFAULT: '-',
 	EXPORT: 'Export',
 	IMPORT: 'Import',
-	...translations[document.documentElement.lang],
 };
+override(text, translations[document.documentElement.lang]);
 
 const cfgLocalStorage = localStorage[STORAGE_NAME];
 let cfg: ScriptCfg = cfgLocalStorage
@@ -81,7 +83,7 @@ const isDescendantOrTheSame = (
 	}
 	return false;
 };
-const saveCfg = () => {
+const saveCfg = (cfg: ScriptCfg) => {
 	const cfgCopy = { ...cfg };
 	const channelsCfgCopy = { ...cfg.channels };
 	outer: for (const key in channelsCfgCopy) {
@@ -95,10 +97,7 @@ const saveCfg = () => {
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
 
-const updateValuesIn = (
-	controls: Record<Setting, HTMLSelectElement | HTMLInputElement>,
-	cfgPart: Cfg
-) => {
+const updateValuesIn = (controls: SettingControls, cfgPart: Cfg) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
 	controls[CUSTOM_SPEED].value = cfgPart[CUSTOM_SPEED] || '';
 	controls[QUALITY].value = cfgPart[QUALITY] || text.DEFAULT;
@@ -114,7 +113,7 @@ const channelControls = () =>
 		[QUALITY]: null as HTMLSelectElement,
 		[VOLUME]: null as HTMLInputElement,
 		[SUBTITLES]: null as HTMLInputElement,
-	}) satisfies Record<Setting, HTMLSelectElement | HTMLInputElement>;
+	}) satisfies SettingControls;
 
 const menuControls = {
 	global: channelControls(),
@@ -141,7 +140,7 @@ const menuControls = {
 /**
  *  @returns if the cfg was updated
  */
-const updateCfg = () => {
+const updateCfg = (cfg: ScriptCfg) => {
 	const doUpdate = cfg._v !== STORAGE_VERSION;
 	if (doUpdate) {
 		switch (cfg._v) {
@@ -158,11 +157,10 @@ const updateCfg = () => {
 				}
 				cfg._v = STORAGE_VERSION;
 		}
-		saveCfg();
 	}
 	return doUpdate;
 };
-updateCfg();
+if (updateCfg(cfg)) saveCfg(cfg);
 
 function debounce<TParams extends any[]>(
 	callback: (...args: TParams) => void,
@@ -208,7 +206,6 @@ const until = <T>(
 const untilAppear = <T>(getItem: () => T, msToWait?: number) =>
 	until<T>(getItem, Boolean, msToWait);
 
-const ytSettingItems: YtSettingItems = {};
 const channelConfig = { current: null as Partial<Cfg> };
 let video: HTMLVideoElement,
 	subtitlesBtn: HTMLButtonElement,
@@ -216,9 +213,11 @@ let video: HTMLVideoElement,
 	SPEED_NORMAL: string,
 	isSpeedChanged = false;
 
-const menu: Menu = {
-	element: null,
-	btn: null,
+type Focusable = { focus(): void };
+
+const menu = {
+	element: null as HTMLDivElement,
+	btn: null as HTMLButtonElement,
 	isOpen: false,
 	width: 0,
 	_closeListener: {
@@ -241,8 +240,8 @@ const menu: Menu = {
 			document.removeEventListener('keyup', this.onKeyUp);
 		},
 	},
-	firstElement: null,
-	_setOpen(bool) {
+	firstElement: null as Focusable,
+	_setOpen(bool: boolean) {
 		if (bool) {
 			this.fixPosition();
 			this.element.style.visibility = 'visible';
@@ -276,20 +275,6 @@ const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
 const getActionsBar = () => $('actions')?.querySelector('ytd-menu-renderer');
 
-const iconD = {
-	[QUALITY]:
-		'M15,17h6v1h-6V17z M11,17H3v1h8v2h1v-2v-1v-2h-1V17z M14,8h1V6V5V3h-1v2H3v1h11V8z            M18,5v1h3V5H18z M6,14h1v-2v-1V9H6v2H3v1 h3V14z M10,12h11v-1H10V12z',
-	[SPEED]:
-		'M10,8v8l6-4L10,8L10,8z M6.3,5L5.7,4.2C7.2,3,9,2.2,11,2l0.1,1C9.3,3.2,7.7,3.9,6.3,5z            M5,6.3L4.2,5.7C3,7.2,2.2,9,2,11 l1,.1C3.2,9.3,3.9,7.7,5,6.3z            M5,17.7c-1.1-1.4-1.8-3.1-2-4.8L2,13c0.2,2,1,3.8,2.2,5.4L5,17.7z            M11.1,21c-1.8-0.2-3.4-0.9-4.8-2 l-0.6,.8C7.2,21,9,21.8,11,22L11.1,21z            M22,12c0-5.2-3.9-9.4-9-10l-0.1,1c4.6,.5,8.1,4.3,8.1,9s-3.5,8.5-8.1,9l0.1,1 C18.2,21.5,22,17.2,22,12z',
-} satisfies Record<YtSettingName, string>;
-const getYtElementFinder =
-	<TElem extends HTMLElement>(elems: NodeListOf<TElem>) =>
-	(name: YtSettingName) =>
-		findInNodeList(
-			elems,
-			(el) => !!el.querySelector(`path[d="${iconD[name]}"]`)
-		);
-
 const untilChannelUsernameAppear = (aboveTheFold: HTMLElement) =>
 	untilAppear(() => getChannelUsername(aboveTheFold)).catch(() => '');
 
@@ -298,13 +283,13 @@ const isMusicChannel = (aboveTheFold: HTMLElement) =>
 
 const findInNodeList = <T extends HTMLElement>(
 	list: NodeListOf<T>,
-	callback: (item: T) => boolean
+	finder: (item: T) => boolean
 ) => {
-	for (const item of list) if (callback(item)) return item;
+	for (const item of list) if (finder(item)) return item;
 };
 
-const ytMenu: YtMenu = {
-	async updatePlayer(plr) {
+const ytMenu = {
+	async setPlayer(plr: HTMLElement) {
 		this.element = plr.querySelector('.ytp-settings-menu');
 		this._btn = plr.querySelector('.ytp-settings-button');
 		const clickBtn = this._btn.click.bind(this._btn);
@@ -312,28 +297,42 @@ const ytMenu: YtMenu = {
 		await delay(50);
 		restoreFocusAfter(clickBtn);
 	},
-	element: null,
-	_btn: null,
+	element: null as HTMLElement,
+	_btn: null as HTMLElement,
 	isOpen() {
 		return this.element.style.display !== 'none';
 	},
-	setOpen(bool) {
+	setOpen(bool: boolean) {
 		if (bool !== this.isOpen()) this._btn.click();
 	},
-	openItem(item) {
+	openItem(item: YtSettingItem) {
 		this.setOpen(true);
 		item.click();
-		return this.element.querySelectorAll<HTMLElement>(
+		return this.element.querySelectorAll(
 			'.ytp-panel-animate-forward .ytp-menuitem-label'
 		);
 	},
-	findInItem(item, callback) {
-		return findInNodeList(this.openItem(item), callback);
+	settingItems: {
+		[SPEED]: null,
+		[QUALITY]: null,
+	} as Record<YtSettingName, YtSettingItem | null>,
+	setSettingItems(items: NodeListOf<YtSettingItem>) {
+		const findIcon = (d: string) =>
+			findInNodeList(items, (el) => !!el.querySelector(`path[d="${d}"]`));
+
+		this.settingItems[SPEED] = findIcon(
+			'M10,8v8l6-4L10,8L10,8z M6.3,5L5.7,4.2C7.2,3,9,2.2,11,2l0.1,1C9.3,3.2,7.7,3.9,6.3,5z            M5,6.3L4.2,5.7C3,7.2,2.2,9,2,11 l1,.1C3.2,9.3,3.9,7.7,5,6.3z            M5,17.7c-1.1-1.4-1.8-3.1-2-4.8L2,13c0.2,2,1,3.8,2.2,5.4L5,17.7z            M11.1,21c-1.8-0.2-3.4-0.9-4.8-2 l-0.6,.8C7.2,21,9,21.8,11,22L11.1,21z            M22,12c0-5.2-3.9-9.4-9-10l-0.1,1c4.6,.5,8.1,4.3,8.1,9s-3.5,8.5-8.1,9l0.1,1 C18.2,21.5,22,17.2,22,12z'
+		);
+		this.settingItems[QUALITY] = findIcon(
+			'M15,17h6v1h-6V17z M11,17H3v1h8v2h1v-2v-1v-2h-1V17z M14,8h1V6V5V3h-1v2H3v1h11V8z            M18,5v1h3V5H18z M6,14h1v-2v-1V9H6v2H3v1 h3V14z M10,12h11v-1H10V12z'
+		);
+	},
+	findInItem(name: YtSettingName, finder: (item: HTMLElement) => boolean) {
+		return findInNodeList(this.openItem(this.settingItems[name]), finder);
 	},
 };
 
 type YtSettingName = typeof SPEED | typeof QUALITY;
-type YtSettingItems = Partial<Record<YtSettingName, YtSettingItem>>;
 
 const validateVolume = (value: string) => {
 	const num = +value;
@@ -348,7 +347,7 @@ type Props<T extends HTMLElement> = Partial<T> & object;
 const getElCreator =
 	<TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
 	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) =>
-		Object.assign(document.createElement(tag), props);
+		override(document.createElement(tag), props);
 type Comparator = (target: string, current: string) => boolean;
 const comparators: Record<YtSettingName, Comparator> = {
 	// assuming the search is from the top
@@ -378,9 +377,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		const isOpen = ytMenu.isOpen();
 		const compare = comparators[settingName];
 		ytMenu
-			.findInItem(ytSettingItems[settingName], (btn) =>
-				compare(value, btn.textContent)
-			)
+			.findInItem(settingName, (btn) => compare(value, btn.textContent))
 			?.click();
 		ytMenu.setOpen(isOpen);
 	},
@@ -483,24 +480,15 @@ const onPageChange = async () => {
 	await delay(1_000);
 	const getAd = () => plr.querySelector('.ytp-ad-player-overlay');
 	await until(getAd, (ad) => !ad, 200_000);
-	await ytMenu.updatePlayer(plr);
+	await ytMenu.setPlayer(plr);
 	const getMenuItems = () =>
 		ytMenu.element.querySelectorAll<YtSettingItem>(
 			'.ytp-menuitem[role="menuitem"]'
 		);
-	const getYtElement = getYtElementFinder(
-		await until(getMenuItems, (arr) => !!arr.length)
-	);
-	Object.assign(ytSettingItems, {
-		quality: getYtElement(QUALITY),
-		speed: getYtElement(SPEED),
-	} satisfies YtSettingItems);
+	ytMenu.setSettingItems(await until(getMenuItems, (arr) => !!arr.length));
 	if (!SPEED_NORMAL)
 		restoreFocusAfter(() => {
-			const btn = ytMenu.findInItem(
-				ytSettingItems.speed,
-				(btn) => !+btn.textContent
-			);
+			const btn = ytMenu.findInItem(SPEED, (btn) => !+btn.textContent);
 			if (btn) SPEED_NORMAL = btn.textContent;
 		});
 	const doNotChangeSpeed =
@@ -599,9 +587,8 @@ const onPageChange = async () => {
 		const section = div({ role: 'group' });
 		section.setAttribute('aria-labelledby', sectionId);
 		const getLocalId = (name: string) => PREFIX + name + '-' + sectionId;
-		type Item = (HTMLInputElement | HTMLSelectElement) & { hint?: Hint };
 
-		const addItem = <TElem extends Item>(
+		const addItem = <TElem extends Control & { hint?: Hint }>(
 			name: Setting,
 			innerHTML: string,
 			elem: TElem
@@ -721,7 +708,7 @@ const onPageChange = async () => {
 	controlDiv.append(
 		button(text.SAVE, {
 			onclick() {
-				saveCfg();
+				saveCfg(cfg);
 				updateControlStatus(text.SAVE);
 			},
 		}),
@@ -738,15 +725,14 @@ const onPageChange = async () => {
 					const raw = await navigator.clipboard.readText();
 					const newCfg = JSON.parse(raw);
 					if (typeof newCfg !== 'object' || !newCfg._v) {
-						throw new Error('Import: Invalid data');
+						throw new Error('Invalid data');
 					}
-					if (!updateCfg()) {
-						localStorage[STORAGE_NAME] = raw;
-						cfg = newCfg;
-					}
+					updateCfg(newCfg);
+					localStorage[STORAGE_NAME] = raw;
+					cfg = newCfg;
 					channelConfig.current = cfg.channels[channelUsername] ||= {};
 				} catch (e) {
-					updateControlStatus(e.message);
+					updateControlStatus('Import: ' + e.message);
 					return;
 				}
 				updateControlStatus(text.IMPORT);
