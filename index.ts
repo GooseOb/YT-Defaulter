@@ -12,8 +12,6 @@ declare const STORAGE_NAME: 'YTDefaulter',
 	QUALITY: 'quality',
 	VOLUME: 'volume';
 
-const override = Object.assign as <T>(a: T, b: Partial<T>) => T;
-
 const translations: Record<string, Partial<typeof text>> = {
 	'be-BY': {
 		OPEN_SETTINGS: 'Адкрыць дадатковыя налады',
@@ -56,7 +54,7 @@ const text = {
 	EXPORT: 'Export',
 	IMPORT: 'Import',
 };
-override(text, translations[document.documentElement.lang]);
+Object.assign(text, translations[document.documentElement.lang]);
 
 const cfgLocalStorage = localStorage[STORAGE_NAME];
 let cfg: ScriptCfg = cfgLocalStorage
@@ -74,8 +72,8 @@ let cfg: ScriptCfg = cfgLocalStorage
 			},
 		};
 const isDescendantOrTheSame = (
-	child: Element | ParentNode,
-	parents: ParentNode[]
+	child: Readonly<Element | ParentNode>,
+	parents: readonly Readonly<ParentNode>[]
 ): boolean => {
 	while (child !== null) {
 		if (parents.includes(child)) return true;
@@ -83,7 +81,8 @@ const isDescendantOrTheSame = (
 	}
 	return false;
 };
-const saveCfg = (cfg: ScriptCfg) => {
+
+const saveCfg = (cfg: DeepReadonly<ScriptCfg>) => {
 	const cfgCopy = { ...cfg };
 	const channelsCfgCopy = { ...cfg.channels };
 	outer: for (const key in channelsCfgCopy) {
@@ -97,7 +96,7 @@ const saveCfg = (cfg: ScriptCfg) => {
 	localStorage[STORAGE_NAME] = JSON.stringify(cfgCopy);
 };
 
-const updateValuesIn = (controls: SettingControls, cfgPart: Cfg) => {
+const updateValuesIn = (controls: SettingControls, cfgPart: Readonly<Cfg>) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
 	controls[CUSTOM_SPEED].value = cfgPart[CUSTOM_SPEED] || '';
 	controls[QUALITY].value = cfgPart[QUALITY] || text.DEFAULT;
@@ -282,14 +281,14 @@ const isMusicChannel = (aboveTheFold: HTMLElement) =>
 	!!aboveTheFold.querySelector('.badge-style-type-verified-artist');
 
 const findInNodeList = <T extends HTMLElement>(
-	list: NodeListOf<T>,
+	list: DeepReadonly<NodeListOf<T>>,
 	finder: (item: T) => boolean
 ) => {
 	for (const item of list) if (finder(item)) return item;
 };
 
 const ytMenu = {
-	async setPlayer(plr: HTMLElement) {
+	async setPlayer(plr: Readonly<HTMLElement>) {
 		this.element = plr.querySelector('.ytp-settings-menu');
 		this._btn = plr.querySelector('.ytp-settings-button');
 		const clickBtn = this._btn.click.bind(this._btn);
@@ -305,7 +304,7 @@ const ytMenu = {
 	setOpen(bool: boolean) {
 		if (bool !== this.isOpen()) this._btn.click();
 	},
-	openItem(item: YtSettingItem) {
+	openItem(item: Readonly<YtSettingItem>) {
 		this.setOpen(true);
 		item.click();
 		return this.element.querySelectorAll(
@@ -316,7 +315,7 @@ const ytMenu = {
 		[SPEED]: null,
 		[QUALITY]: null,
 	} as Record<YtSettingName, YtSettingItem | null>,
-	setSettingItems(items: NodeListOf<YtSettingItem>) {
+	setSettingItems(items: DeepReadonly<NodeListOf<YtSettingItem>>) {
 		const findIcon = (d: string) =>
 			findInNodeList(items, (el) => !!el.querySelector(`path[d="${d}"]`));
 
@@ -327,7 +326,10 @@ const ytMenu = {
 			'M15,17h6v1h-6V17z M11,17H3v1h8v2h1v-2v-1v-2h-1V17z M14,8h1V6V5V3h-1v2H3v1h11V8z            M18,5v1h3V5H18z M6,14h1v-2v-1V9H6v2H3v1 h3V14z M10,12h11v-1H10V12z'
 		);
 	},
-	findInItem(name: YtSettingName, finder: (item: HTMLElement) => boolean) {
+	findInItem(
+		name: YtSettingName,
+		finder: (item: Readonly<HTMLElement>) => boolean
+	) {
 		return findInNodeList(this.openItem(this.settingItems[name]), finder);
 	},
 };
@@ -346,10 +348,12 @@ const validateVolume = (value: string) => {
 type Props<T extends HTMLElement> = Partial<T> & object;
 const getElCreator =
 	<TTag extends keyof HTMLElementTagNameMap>(tag: TTag) =>
-	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(props?: TProps) =>
-		override(document.createElement(tag), props);
+	<TProps extends Props<HTMLElementTagNameMap[TTag]>>(
+		props?: DeepReadonly<TProps>
+	) =>
+		Object.assign(document.createElement(tag), props);
 type Comparator = (target: string, current: string) => boolean;
-const comparators: Record<YtSettingName, Comparator> = {
+const comparators: { readonly [P in YtSettingName]: Comparator } = {
 	// assuming the search is from the top
 	[QUALITY]: (target, current) =>
 		+target >= parseInt(current) &&
@@ -360,7 +364,7 @@ const logger = {
 	// log(...msgs: string[]) {
 	// 	console.log('[YT-Defaulter]', ...msgs);
 	// },
-	err(...msgs: string[]) {
+	err(...msgs: readonly string[]) {
 		console.error('[YT-Defaulter]', ...msgs);
 	},
 	outOfRange(what: string) {
@@ -418,11 +422,14 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 };
 const div = getElCreator('div'),
 	input = getElCreator('input'),
-	checkbox = <T extends Props<HTMLInputElement>>(props?: T) =>
+	checkbox = <T extends Props<HTMLInputElement>>(props?: DeepReadonly<T>) =>
 		input({ type: 'checkbox', ...props }),
 	option = getElCreator('option'),
 	_label = getElCreator('label'),
-	labelEl = <T extends Props<HTMLLabelElement>>(forId: string, props?: T) => {
+	labelEl = <T extends Props<HTMLLabelElement>>(
+		forId: string,
+		props?: DeepReadonly<T>
+	) => {
 		const elem = _label(props);
 		elem.setAttribute('for', forId);
 		return elem;
@@ -433,7 +440,7 @@ const div = getElCreator('div'),
 	_button = getElCreator('button'),
 	button = <T extends Props<HTMLButtonElement>>(
 		textContent: string,
-		props?: T
+		props?: DeepReadonly<T>
 	) =>
 		_button({
 			textContent,
@@ -447,8 +454,8 @@ const div = getElCreator('div'),
 			...props,
 		});
 
-class Hint<TProps extends Props<HTMLDivElement> = any> {
-	constructor(prefix: string, props?: TProps) {
+class Hint {
+	constructor(prefix: string, props?: DeepReadonly<Props<HTMLDivElement>>) {
 		this.element = div(props);
 		this.element.className ||= SETTING_HINT_CLASS;
 		this.prefix = prefix;
@@ -462,7 +469,7 @@ class Hint<TProps extends Props<HTMLDivElement> = any> {
 		if (msg) this.element.textContent = this.prefix + msg;
 	}
 	private prefix: string;
-	element: HTMLElement;
+	element: HTMLDivElement;
 }
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
