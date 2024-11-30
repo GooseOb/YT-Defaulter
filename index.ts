@@ -126,7 +126,7 @@ const menuControls = {
 		enhancedBitrate: null as HTMLInputElement,
 	} satisfies Record<FlagName, HTMLInputElement>,
 	updateThisChannel() {
-		updateValuesIn(this.thisChannel, channelConfig.current);
+		updateValuesIn(this.thisChannel, channelConfig);
 	},
 	updateValues() {
 		updateValuesIn(this.global, cfg.global);
@@ -206,7 +206,7 @@ const until = <T>(
 const untilAppear = <T>(getItem: () => T, msToWait?: number) =>
 	until<T>(getItem, Boolean, msToWait);
 
-const channelConfig = { current: null as Partial<Cfg> };
+let channelConfig = null as Partial<Cfg>;
 let video: HTMLVideoElement,
 	subtitlesBtn: HTMLButtonElement,
 	muteBtn: HTMLButtonElement,
@@ -474,7 +474,7 @@ const onPageChange = async () => {
 	const aboveTheFold = await untilAppear(getAboveTheFold);
 	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
 
-	channelConfig.current = cfg.channels[channelUsername] ||= {};
+	channelConfig = cfg.channels[channelUsername] ||= {};
 
 	const plr = await untilAppear(getPlr);
 	await delay(1_000);
@@ -495,10 +495,10 @@ const onPageChange = async () => {
 		cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold);
 	const settings = {
 		...cfg.global,
-		...channelConfig.current,
+		...channelConfig,
 	};
-	const isChannelSpeed = 'speed' in channelConfig.current;
-	const isChannelCustomSpeed = 'customSpeed' in channelConfig.current;
+	const isChannelSpeed = 'speed' in channelConfig;
+	const isChannelCustomSpeed = 'customSpeed' in channelConfig;
 	if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
 		delete settings.customSpeed;
 	if (doNotChangeSpeed && !isChannelSpeed) settings.speed = SPEED_NORMAL;
@@ -679,7 +679,7 @@ const onPageChange = async () => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		createSection(SECTION_GLOBAL, text.GLOBAL, cfg.global),
-		createSection(SECTION_LOCAL, text.LOCAL, channelConfig.current)
+		createSection(SECTION_LOCAL, text.LOCAL, channelConfig)
 	);
 	const checkboxDiv = (
 		id: string,
@@ -730,7 +730,7 @@ const onPageChange = async () => {
 					updateCfg(newCfg);
 					localStorage[STORAGE_NAME] = raw;
 					cfg = newCfg;
-					channelConfig.current = cfg.channels[channelUsername] ||= {};
+					channelConfig = cfg.channels[channelUsername] ||= {};
 				} catch (e) {
 					updateControlStatus('Import: ' + e.message);
 					return;
@@ -823,13 +823,13 @@ document.addEventListener(
 		} else if (e.code === 'Space') {
 			e.stopPropagation();
 			e.preventDefault();
-			const customSpeedValue = channelConfig.current
-				? channelConfig.current.customSpeed ||
-					(!channelConfig.current.speed && cfg.global.customSpeed)
+			const customSpeedValue = channelConfig
+				? channelConfig.customSpeed ||
+					(!channelConfig.speed && cfg.global.customSpeed)
 				: cfg.global.customSpeed;
 			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 			restoreFocusAfter(() => {
-				valueSetters[SPEED]((channelConfig.current || cfg.global)[SPEED]);
+				valueSetters[SPEED]((channelConfig || cfg.global)[SPEED]);
 			});
 		}
 	},
