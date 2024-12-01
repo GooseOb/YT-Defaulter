@@ -21,5 +21,7 @@ export default {
 	define,
 	userscript: {
 		logErrors: !process.argv.includes('--build'),
+		transform: (code: string) =>
+			code.replace(/\["([^"]+)"]:/g, '$1:').replace(/\["([^"]+)"]/g, '.$1'),
 	},
 } satisfies BuildUserscriptConfig;
