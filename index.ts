@@ -537,32 +537,7 @@ const applySettings = (settings: Cfg) => {
 	});
 };
 
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-const onPageChange = async () => {
-	if (location.pathname !== '/watch') return;
-
-	/* ---------------------- apply settings ---------------------- */
-
-	const aboveTheFold = await untilAppear(getAboveTheFold);
-	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
-
-	channelConfig = cfg.channels[channelUsername] ||= {};
-
-	await plr.set(await untilAppear(getPlr));
-
-	applySettings(
-		computeSettings(
-			cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
-		)
-	);
-
-	/* ---------------------- settings menu ---------------------- */
-
-	if (menu.element) {
-		menuControls.updateThisChannel();
-		return;
-	}
-
+const createMenu = async (updateChannelConfig: () => void) => {
 	menu.element = div({
 		id: MENU_ID,
 	});
@@ -764,7 +739,7 @@ const onPageChange = async () => {
 					updateCfg(newCfg);
 					localStorage[STORAGE_NAME] = raw;
 					cfg = newCfg;
-					channelConfig = cfg.channels[channelUsername] ||= {};
+					updateChannelConfig();
 				} catch (e) {
 					updateControlStatus('Import: ' + e.message);
 					return;
@@ -814,6 +789,34 @@ const onPageChange = async () => {
 	document.querySelector('ytd-popup-container').append(menu.element);
 	menu.width = menu.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
+};
+
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const onPageChange = async () => {
+	if (location.pathname !== '/watch') return;
+
+	const aboveTheFold = await untilAppear(getAboveTheFold);
+	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
+
+	const updateChannelConfig = () => {
+		channelConfig = cfg.channels[channelUsername] ||= {};
+	};
+
+	updateChannelConfig();
+
+	await plr.set(await untilAppear(getPlr));
+
+	applySettings(
+		computeSettings(
+			cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
+		)
+	);
+
+	if (menu.element) {
+		menuControls.updateThisChannel();
+	} else {
+		await createMenu(updateChannelConfig);
+	}
 };
 
 let lastHref: string;
