@@ -209,7 +209,7 @@ let channelConfig = null as Partial<Cfg>;
 let video: HTMLVideoElement,
 	subtitlesBtn: HTMLButtonElement,
 	muteBtn: HTMLButtonElement,
-	SPEED_NORMAL: string,
+	speedNormal: string,
 	isSpeedApplied = false;
 
 type Focusable = { focus(): void };
@@ -372,12 +372,12 @@ const logger = {
 	},
 };
 type ValueSetterHelpers = {
-	_ytSettingItem(value: string, settingName: YtSettingName): void;
+	_ytSettingItem(settingName: YtSettingName, value: string): void;
 };
 type ValueSetters = { [P in Setting]: (value: Cfg[P]) => void };
 
 const valueSetters: ValueSetters & ValueSetterHelpers = {
-	_ytSettingItem(value, settingName) {
+	_ytSettingItem(settingName, value) {
 		const isOpen = ytMenu.isOpen();
 		const compare = comparators[settingName];
 		ytMenu
@@ -386,7 +386,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		ytMenu.setOpen(isOpen);
 	},
 	speed(value) {
-		this._ytSettingItem(isSpeedApplied ? SPEED_NORMAL : value, SPEED);
+		this._ytSettingItem(SPEED, isSpeedApplied ? speedNormal : value);
 		isSpeedApplied = !isSpeedApplied;
 	},
 	customSpeed(value) {
@@ -417,7 +417,7 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 		}
 	},
 	quality(value) {
-		this._ytSettingItem(value, QUALITY);
+		this._ytSettingItem(QUALITY, value);
 	},
 };
 const div = getElCreator('div'),
@@ -493,10 +493,10 @@ const onPageChange = async () => {
 			'.ytp-menuitem[role="menuitem"]'
 		);
 	ytMenu.setSettingItems(await until(getMenuItems, (arr) => !!arr.length));
-	if (!SPEED_NORMAL)
+	if (!speedNormal)
 		restoreFocusAfter(() => {
 			const btn = ytMenu.findInItem(SPEED, (btn) => !+btn.textContent);
-			if (btn) SPEED_NORMAL = btn.textContent;
+			if (btn) speedNormal = btn.textContent;
 		});
 	const doNotChangeSpeed =
 		cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold);
@@ -508,9 +508,9 @@ const onPageChange = async () => {
 	const isChannelCustomSpeed = 'customSpeed' in channelConfig;
 	if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
 		delete settings.customSpeed;
-	if (doNotChangeSpeed && !isChannelSpeed) settings.speed = SPEED_NORMAL;
+	if (doNotChangeSpeed && !isChannelSpeed) settings.speed = speedNormal;
 	if (doNotChangeSpeed) {
-		settings.speed = SPEED_NORMAL;
+		settings.speed = speedNormal;
 		delete settings.customSpeed;
 	}
 	const { customSpeed } = settings;
@@ -569,7 +569,7 @@ const onPageChange = async () => {
 		'1.75',
 		'1.5',
 		'1.25',
-		SPEED_NORMAL,
+		speedNormal,
 		'0.75',
 		'0.5',
 		'0.25',
