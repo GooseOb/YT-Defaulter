@@ -345,7 +345,7 @@ const validateVolume = (value: string) => {
 		? 'out of range'
 		: isNaN(num)
 			? 'not a number'
-			: false;
+			: null;
 };
 
 type Props<T extends HTMLElement> = Partial<T> & object;
