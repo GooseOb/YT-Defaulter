@@ -478,6 +478,24 @@ class Hint {
 	element: HTMLDivElement;
 }
 
+const computeSettings = (doNotChangeSpeed: boolean) => {
+	const settings = {
+		...cfg.global,
+		...channelConfig,
+	};
+	const isChannelSpeed = 'speed' in channelConfig;
+	const isChannelCustomSpeed = 'customSpeed' in channelConfig;
+	if (doNotChangeSpeed) {
+		settings.speed = speedNormal;
+		delete settings.customSpeed;
+	} else if (isChannelCustomSpeed) {
+		delete settings.speed;
+	} else if (isChannelSpeed) {
+		delete settings.customSpeed;
+	}
+	return settings;
+};
+
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
@@ -506,33 +524,24 @@ const onPageChange = async () => {
 				(btn) => !+btn.textContent
 			).textContent;
 		});
-	const doNotChangeSpeed =
-		cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold);
-	const settings = {
-		...cfg.global,
-		...channelConfig,
-	};
-	const isChannelSpeed = 'speed' in channelConfig;
-	const isChannelCustomSpeed = 'customSpeed' in channelConfig;
-	if ((doNotChangeSpeed && !isChannelCustomSpeed) || isChannelSpeed)
-		delete settings.customSpeed;
-	if (doNotChangeSpeed && !isChannelSpeed) settings.speed = speedNormal;
-	if (doNotChangeSpeed) {
-		settings.speed = speedNormal;
-		delete settings.customSpeed;
-	}
-	const { customSpeed } = settings;
-	delete settings.customSpeed;
+
 	isSpeedApplied = false;
 	video ||= plr.querySelector('.html5-main-video');
 	subtitlesBtn ||= plr.querySelector('.ytp-subtitles-button');
 	restoreFocusAfter(() => {
+		const settings = computeSettings(
+			cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
+		);
+
+		if (!isNaN(+settings.customSpeed)) {
+			isSpeedApplied = false;
+			valueSetters.customSpeed(settings.customSpeed);
+		}
+
+		delete settings.customSpeed;
+
 		for (const setting in settings)
 			valueSetters[setting as Setting](settings[setting as never]);
-		if (!isNaN(+customSpeed)) {
-			isSpeedApplied = false;
-			valueSetters.customSpeed(customSpeed);
-		}
 		ytMenu.setOpen(false);
 	});
 
@@ -676,7 +685,6 @@ const onPageChange = async () => {
 				min: '0',
 				max: '100',
 				oninput(this: ReadonlyInputWithHint) {
-					settings.volume = this.value;
 					const warning = validateVolume(this.value);
 					if (warning) {
 						this.hint.show(warning);
