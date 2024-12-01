@@ -284,7 +284,10 @@ const findInNodeList = <T extends HTMLElement>(
 	list: DeepReadonly<NodeListOf<T>>,
 	finder: (item: T) => boolean
 ) => {
-	for (const item of list) if (finder(item)) return item;
+	for (const item of list) {
+		if (finder(item)) return item;
+	}
+	return null;
 };
 
 const ytMenu = {
@@ -380,10 +383,13 @@ const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(settingName, value) {
 		const isOpen = ytMenu.isOpen();
 		const compare = comparators[settingName];
-		ytMenu
-			.findInItem(settingName, (btn) => compare(value, btn.textContent))
-			?.click();
-		ytMenu.setOpen(isOpen);
+		const btn = ytMenu.findInItem(settingName, (btn) =>
+			compare(value, btn.textContent)
+		);
+		if (btn) {
+			btn.click();
+			ytMenu.setOpen(isOpen);
+		}
 	},
 	speed(value) {
 		this._ytSettingItem(SPEED, isSpeedApplied ? speedNormal : value);
@@ -495,8 +501,10 @@ const onPageChange = async () => {
 	ytMenu.setSettingItems(await until(getMenuItems, (arr) => !!arr.length));
 	if (!speedNormal)
 		restoreFocusAfter(() => {
-			const btn = ytMenu.findInItem(SPEED, (btn) => !+btn.textContent);
-			if (btn) speedNormal = btn.textContent;
+			speedNormal = ytMenu.findInItem(
+				SPEED,
+				(btn) => !+btn.textContent
+			).textContent;
 		});
 	const doNotChangeSpeed =
 		cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold);
