@@ -505,7 +505,7 @@ class Hint {
 	element: HTMLDivElement;
 }
 
-const computeSettings = (doNotChangeSpeed: boolean) => {
+const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 	const settings = {
 		...cfg.global,
 		...channelConfig,
