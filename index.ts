@@ -797,14 +797,14 @@ const onPageChange = async () => {
 		'http://www.w3.org/2000/svg',
 		'svg'
 	);
-	const iconStyle = {
-		viewBox: '0 0 24 24',
-		width: '24',
-		height: '24',
-		fill: 'var(--yt-spec-text-primary)',
-	};
-	for (const key in iconStyle)
-		settingsIcon.setAttribute(key, iconStyle[key as keyof typeof iconStyle]);
+	for (const [prop, value] of [
+		['viewBox', '0 0 24 24'],
+		['width', '24'],
+		['height', '24'],
+		['fill', 'var(--yt-spec-text-primary)'],
+	] as const) {
+		settingsIcon.setAttribute(prop, value);
+	}
 	settingsIcon.append($('settings'));
 	menu.btn.setAttribute('aria-controls', MENU_ID);
 	menu.btn.classList.add(btnClass + '--icon-button');
