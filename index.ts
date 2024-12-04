@@ -234,13 +234,13 @@ const menu = {
 			document.removeEventListener('keyup', this.onKeyUp);
 		},
 	},
-	firstElement: null as Focusable,
+	firstFocusable: null as Focusable,
 	_setOpen(bool: boolean) {
 		if (bool) {
 			this.fixPosition();
 			this.element.style.visibility = 'visible';
 			this._closeListener.add();
-			this.firstElement.focus();
+			this.firstFocusable.focus();
 		} else {
 			this.element.style.visibility = 'hidden';
 			this._closeListener.remove();
@@ -537,24 +537,126 @@ const applySettings = (settings: Cfg) => {
 	});
 };
 
-const createMenu = async (updateChannelConfig: () => void) => {
-	menu.element = div({
-		id: MENU_ID,
-	});
-	menu.btn = button('', {
-		id: BTN_ID,
-		ariaLabel: text.OPEN_SETTINGS,
-		tabIndex: 0,
-		onclick() {
-			menu.toggle();
+const settingsIcon = () => {
+	const element = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	for (const [prop, value] of [
+		['viewBox', '0 0 24 24'],
+		['width', '24'],
+		['height', '24'],
+		['fill', 'var(--yt-spec-text-primary)'],
+	] as const) {
+		element.setAttribute(prop, value);
+	}
+	element.append($('settings'));
+	return element;
+};
+
+const checkboxDiv = (
+	id: string,
+	flagName: FlagName,
+	textContent: string
+): HTMLDivElement => {
+	const cont = div({ className: 'check-cont' });
+	id = PREFIX + id;
+	const elem = checkbox({
+		id,
+		checked: cfg.flags[flagName],
+		onclick(this: HTMLInputElement) {
+			cfg.flags[flagName] = this.checked;
 		},
 	});
-	type ToOptions = (
+	menuControls.flags[flagName] = elem;
+	cont.append(labelEl(id, { textContent }), elem);
+	return cont;
+};
+
+const withHint = <THint extends Hint, TItem extends ControlItem<HTMLElement>>(
+	hint: THint,
+	getItem: (hint: THint) => TItem
+) => [hint.element, getItem(hint).item];
+
+const withOptions = (elem: HTMLSelectElement, options: HTMLOptionElement[]) => {
+	elem.append(...options);
+	return elem;
+};
+
+const withListener =
+	<TEvent extends keyof HTMLElementEventMap>(event: TEvent) =>
+	<TElem extends HTMLElement>(
+		elem: TElem,
+		listener: (this: TElem, ev: HTMLElementEventMap[TEvent]) => void
+	) => {
+		elem.addEventListener(event, listener);
+		return elem;
+	};
+const withOnChange = withListener('change');
+const withOnInput = withListener('input');
+const withOnFocus = withListener('focus');
+const withOnBlur = withListener('blur');
+const withOnClick = withListener('click');
+
+const controlWith =
+	<TElem extends HTMLElement>(withFn: (elem: TElem, ...args: any[]) => TElem) =>
+	(obj: ControlItem<TElem>, ...args: any[]) => {
+		withFn(obj.elem, ...args);
+		return obj;
+	};
+
+const withControlOptions = controlWith(withOptions);
+
+type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };
+
+type GetControlCreator = <
+	TSetting extends Setting,
+	TElem extends SettingControls[TSetting],
+>(
+	createElement: (props?: Props<TElem>) => TElem,
+	initVal: (el: TElem) => {
+		get: () => string;
+		set: (value: string) => void;
+		default: string;
+	}
+) => (
+	name: TSetting,
+	label: string,
+	props?: Props<TElem>
+) => ControlItem<TElem>;
+
+const getControlCreators = (getCreator: GetControlCreator) => ({
+	numericInput: getCreator(
+		(props) => input(Object.assign({ type: 'number' }, props)),
+		(elem) => ({
+			get: () => elem.value,
+			set: (value) => {
+				elem.value = value;
+			},
+			default: '',
+		})
+	),
+	checkbox: getCreator(checkbox, (elem: HTMLInputElement) => ({
+		get: () => elem.checked.toString(),
+		set: (value) => {
+			elem.checked = value === 'true';
+		},
+		default: text.DEFAULT,
+	})),
+	select: getCreator(
+		() => selectEl({ value: text.DEFAULT }),
+		(elem: HTMLSelectElement) => ({
+			get: () => elem.value,
+			set: (value) => {
+				elem.value = value;
+			},
+			default: 'false',
+		})
+	),
+});
+
+const initMenu = async (updateChannelConfig: () => void) => {
+	const toOptions = (
 		values: readonly string[],
 		getText: (arg: string) => string
-	) => HTMLOptionElement[];
-
-	const toOptions: ToOptions = (values, getText) => [
+	) => [
 		option({
 			value: text.DEFAULT,
 			textContent: text.DEFAULT,
@@ -567,147 +669,109 @@ const createMenu = async (updateChannelConfig: () => void) => {
 		),
 	];
 
-	const speedValues = [
-		'2',
-		'1.75',
-		'1.5',
-		'1.25',
-		plr.speedNormal,
-		'0.75',
-		'0.5',
-		'0.25',
-	];
-	const qualityValues = [
-		'144',
-		'240',
-		'360',
-		'480',
-		'720',
-		'1080',
-		'1440',
-		'2160',
-		'4320',
-	];
-
-	const createSection = (
+	const section = (
 		sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,
 		title: string,
 		sectionCfg: Cfg
 	): HTMLDivElement => {
-		const section = div({ role: 'group' });
-		section.setAttribute('aria-labelledby', sectionId);
-		const getLocalId = (name: string) => PREFIX + name + '-' + sectionId;
-
-		const addItem = <TElem extends Control & { hint?: Hint }>(
-			name: Setting,
-			innerHTML: string,
-			elem: TElem
-		) => {
-			const item = div();
-			const id = getLocalId(name);
-			const label = labelEl(id, { innerHTML });
-			const valueProp = elem.type === 'checkbox' ? 'checked' : 'value';
-			Object.assign(elem, {
-				id,
-				name,
-				onchange(this: TElem & { checked: boolean; value: string }) {
-					const value: Cfg[Setting] = this[valueProp];
-					if (value === '' || value === text.DEFAULT) delete sectionCfg[name];
-					else sectionCfg[name] = value as never;
-				},
-			} satisfies Partial<HTMLInputElement & HTMLSelectElement>);
-			const cfgValue = sectionCfg[name];
-			if (cfgValue)
-				setTimeout(() => {
-					(elem as any)[valueProp] = cfgValue;
-				});
-			item.append(label, elem);
-			section.append(item);
-			// @ts-ignore
-			menuControls[sectionId][name] = elem;
-			if (elem.hint) section.append(elem.hint.element);
-			return { elem };
-		};
-
-		type AddSelectItem = (
-			name: Setting,
-			text: string,
-			...args: Parameters<ToOptions>
-		) => HTMLSelectElement;
-		const addSelectItem: AddSelectItem = (name, label, options, getText) => {
-			const { elem } = addItem(name, label, selectEl({ value: text.DEFAULT }));
-			elem.append(...toOptions(options, getText));
-			return elem;
-		};
-
-		section.append(getElCreator('span')({ textContent: title, id: sectionId }));
-		const firstElement = addSelectItem(
-			SPEED,
-			text.SPEED,
-			speedValues,
-			(val) => val
-		);
-		if (sectionId === SECTION_GLOBAL) menu.firstElement = firstElement;
-		addItem(
-			CUSTOM_SPEED,
-			text.CUSTOM_SPEED,
-			input({
-				type: 'number',
-				onfocus(this: ReadonlyInputWithHint) {
-					this.hint.show();
-				},
-				onblur(this: ReadonlyInputWithHint) {
-					this.hint.hide();
-				},
-				hint: new Hint('', { textContent: text.CUSTOM_SPEED_HINT }),
-			})
-		);
-		addSelectItem(QUALITY, text.QUALITY, qualityValues, (val) => val + 'p');
-		addItem(
-			VOLUME,
-			text.VOLUME,
-			input({
-				type: 'number',
-				min: '0',
-				max: '100',
-				oninput(this: ReadonlyInputWithHint) {
-					const warning = validateVolume(this.value);
-					if (warning) {
-						this.hint.show(warning);
-					} else {
-						this.hint.hide();
+		const control = getControlCreators(
+			(createElement, initVal) => (name, label, props) => {
+				const item = div();
+				const id = PREFIX + name + '-' + sectionId;
+				const elem = withOnChange(
+					Object.assign(createElement(props), props, {
+						id,
+						name,
+					}),
+					() => {
+						const value = val.get();
+						if (value === val.default) {
+							delete sectionCfg[name];
+						} else {
+							// @ts-ignore
+							sectionCfg[name] = value;
+						}
 					}
-				},
-				hint: new Hint('Warning: '),
-			})
+				);
+				const val = initVal(elem);
+				const cfgValue = sectionCfg[name];
+				if (cfgValue) {
+					setTimeout(() => {
+						val.set(cfgValue.toString());
+					});
+				}
+				item.append(labelEl(id, { textContent: label }), elem);
+				// @ts-ignore
+				menuControls[sectionId][name] = elem;
+				return { item, elem };
+			}
 		);
-		addItem(SUBTITLES, text.SUBTITLES, checkbox());
-		return section;
+
+		const speedSelect = withControlOptions(
+			control.select(SPEED, text.SPEED),
+			toOptions(
+				['2', '1.75', '1.5', '1.25', plr.speedNormal, '0.75', '0.5', '0.25'],
+				(val) => val
+			)
+		);
+		if (sectionId === SECTION_GLOBAL) menu.firstFocusable = speedSelect.elem;
+
+		const sectionElement = div({ role: 'group' });
+		sectionElement.setAttribute('aria-labelledby', sectionId);
+
+		sectionElement.append(
+			getElCreator('span')({ textContent: title, id: sectionId }),
+			speedSelect.item,
+			...withHint(
+				new Hint('', {
+					textContent: text.CUSTOM_SPEED_HINT,
+				}),
+				(hint) =>
+					controlWith(withOnFocus)(
+						controlWith(withOnBlur)(
+							control.numericInput(CUSTOM_SPEED, text.CUSTOM_SPEED),
+							() => {
+								hint.hide();
+							}
+						),
+						() => {
+							hint.show();
+						}
+					)
+			),
+			withControlOptions(
+				control.select(QUALITY, text.QUALITY),
+				toOptions(
+					['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'],
+					(val) => val + 'p'
+				)
+			).item,
+			...withHint(new Hint('Warning: '), (hint) =>
+				controlWith(withOnInput)(
+					control.numericInput(VOLUME, text.VOLUME, {
+						min: '0',
+						max: '100',
+					}),
+					function (this: HTMLInputElement) {
+						const warning = validateVolume(this.value);
+						if (warning) {
+							hint.show(warning);
+						} else {
+							hint.hide();
+						}
+					}
+				)
+			),
+			control.checkbox(SUBTITLES, text.SUBTITLES, checkbox()).item
+		);
+		return sectionElement;
 	};
 
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
-		createSection(SECTION_GLOBAL, text.GLOBAL, cfg.global),
-		createSection(SECTION_LOCAL, text.LOCAL, channelConfig)
+		section(SECTION_GLOBAL, text.GLOBAL, cfg.global),
+		section(SECTION_LOCAL, text.LOCAL, channelConfig)
 	);
-	const checkboxDiv = (
-		id: string,
-		prop: FlagName,
-		textContent: string
-	): HTMLDivElement => {
-		const cont = div({ className: 'check-cont' });
-		id = PREFIX + id;
-		const elem = checkbox({
-			id,
-			checked: cfg.flags[prop],
-			onclick(this: HTMLInputElement) {
-				cfg.flags[prop] = this.checked;
-			},
-		});
-		menuControls.flags[prop] = elem;
-		cont.append(labelEl(id, { textContent }), elem);
-		return cont;
-	};
 
 	const controlStatus = div();
 	const updateControlStatus = (content: string) => {
@@ -715,40 +779,50 @@ const createMenu = async (updateChannelConfig: () => void) => {
 	};
 	const controlDiv = div({ className: 'control-cont' });
 	controlDiv.append(
-		button(text.SAVE, {
-			onclick() {
-				saveCfg(cfg);
-				updateControlStatus(text.SAVE);
-			},
+		withOnClick(button(text.SAVE), () => {
+			saveCfg(cfg);
+			updateControlStatus(text.SAVE);
 		}),
-		button(text.EXPORT, {
-			onclick: () => {
-				navigator.clipboard.writeText(localStorage[STORAGE_NAME]).then(() => {
-					updateControlStatus(text.EXPORT);
-				});
-			},
+		withOnClick(button(text.EXPORT), () => {
+			navigator.clipboard.writeText(localStorage[STORAGE_NAME]).then(() => {
+				updateControlStatus(text.EXPORT);
+			});
 		}),
-		button(text.IMPORT, {
-			onclick: async () => {
-				try {
-					const raw = await navigator.clipboard.readText();
-					const newCfg = JSON.parse(raw);
-					if (typeof newCfg !== 'object' || !newCfg._v) {
-						throw new Error('Invalid data');
-					}
-					updateCfg(newCfg);
-					localStorage[STORAGE_NAME] = raw;
-					cfg = newCfg;
-					updateChannelConfig();
-				} catch (e) {
-					updateControlStatus('Import: ' + e.message);
-					return;
+		withOnClick(button(text.IMPORT), async () => {
+			try {
+				const raw = await navigator.clipboard.readText();
+				const newCfg = JSON.parse(raw);
+				if (typeof newCfg !== 'object' || !newCfg._v) {
+					throw new Error('Invalid data');
 				}
-				updateControlStatus(text.IMPORT);
-				menuControls.updateValues();
-			},
+				updateCfg(newCfg);
+				localStorage[STORAGE_NAME] = raw;
+				cfg = newCfg;
+				updateChannelConfig();
+			} catch (e) {
+				updateControlStatus('Import: ' + e.message);
+				return;
+			}
+			updateControlStatus(text.IMPORT);
+			menuControls.updateValues();
 		})
 	);
+
+	menu.btn = button('', {
+		id: BTN_ID,
+		ariaLabel: text.OPEN_SETTINGS,
+		tabIndex: 0,
+		onclick: () => {
+			menu.toggle();
+		},
+	});
+	menu.btn.setAttribute('aria-controls', MENU_ID);
+	menu.btn.classList.add(btnClass + '--icon-button');
+	menu.btn.append(settingsIcon());
+
+	menu.element = div({
+		id: MENU_ID,
+	});
 	menu.element.append(
 		sections,
 		checkboxDiv('shorts', 'shortsToUsual', text.SHORTS),
@@ -768,22 +842,6 @@ const createMenu = async (updateChannelConfig: () => void) => {
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
-	const settingsIcon = document.createElementNS(
-		'http://www.w3.org/2000/svg',
-		'svg'
-	);
-	for (const [prop, value] of [
-		['viewBox', '0 0 24 24'],
-		['width', '24'],
-		['height', '24'],
-		['fill', 'var(--yt-spec-text-primary)'],
-	] as const) {
-		settingsIcon.setAttribute(prop, value);
-	}
-	settingsIcon.append($('settings'));
-	menu.btn.setAttribute('aria-controls', MENU_ID);
-	menu.btn.classList.add(btnClass + '--icon-button');
-	menu.btn.append(settingsIcon);
 	const actionsBar = await untilAppear(getActionsBar);
 	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
 	document.querySelector('ytd-popup-container').append(menu.element);
@@ -815,7 +873,7 @@ const onPageChange = async () => {
 	if (menu.element) {
 		menuControls.updateThisChannel();
 	} else {
-		await createMenu(updateChannelConfig);
+		await initMenu(updateChannelConfig);
 	}
 };
 
