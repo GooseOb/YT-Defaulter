@@ -575,25 +575,52 @@ const withHint = <THint extends Hint, TItem extends ControlItem<HTMLElement>>(
 	getItem: (hint: THint) => TItem
 ) => [hint.element, getItem(hint).item];
 
-const withOptions = (elem: HTMLSelectElement, options: HTMLOptionElement[]) => {
-	elem.append(...options);
+const withEffects = <TElem extends HTMLElement>(
+	elem: TElem,
+	effects: ((elem: TElem) => void)[]
+) => {
+	for (const effect of effects) {
+		effect(elem);
+	}
 	return elem;
 };
 
-const withListener =
-	<TEvent extends keyof HTMLElementEventMap>(event: TEvent) =>
-	<TElem extends HTMLElement>(
-		elem: TElem,
-		listener: (this: TElem, ev: HTMLElementEventMap[TEvent]) => void
-	) => {
-		elem.addEventListener(event, listener);
-		return elem;
+const optionsEffect =
+	(options: HTMLOptionElement[]) => (elem: HTMLSelectElement) => {
+		elem.append(...options);
 	};
-const withOnChange = withListener('change');
-const withOnInput = withListener('input');
-const withOnFocus = withListener('focus');
-const withOnBlur = withListener('blur');
-const withOnClick = withListener('click');
+
+const listenerEffect =
+	<TEvent extends keyof HTMLElementEventMap, TElem extends HTMLElement>(
+		event: TEvent,
+		listener: (this: TElem, ev: HTMLElementEventMap[TEvent]) => void
+	) =>
+	(elem: TElem) => {
+		elem.addEventListener(event, listener);
+	};
+
+const withOnClick = <TElem extends HTMLElement>(
+	elem: TElem,
+	listener: (this: TElem, ev: MouseEvent) => void
+) => {
+	elem.addEventListener('click', listener);
+	return elem;
+};
+
+const withListeners = <TElem extends HTMLElement>(
+	elem: TElem,
+	listeners: {
+		[P in keyof HTMLElementEventMap]?: (
+			this: TElem,
+			ev: HTMLElementEventMap[P]
+		) => void;
+	}
+) => {
+	for (const key in listeners) {
+		elem.addEventListener(key, listeners[key as keyof HTMLElementEventMap]);
+	}
+	return elem;
+};
 
 const controlWith =
 	<TElem extends HTMLElement>(withFn: (elem: TElem, ...args: any[]) => TElem) =>
@@ -602,29 +629,27 @@ const controlWith =
 		return obj;
 	};
 
-const withControlOptions = controlWith(withOptions);
+const withControlListeners = controlWith(withListeners);
 
 type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };
 
 type GetControlCreator = <
 	TSetting extends Setting,
 	TElem extends SettingControls[TSetting],
+	TProps,
 >(
-	createElement: (props?: Props<TElem>) => TElem,
+	createElement: (props: TProps) => TElem,
 	initVal: (el: TElem) => {
 		get: () => string;
 		set: (value: string) => void;
 		default: string;
 	}
-) => (
-	name: TSetting,
-	label: string,
-	props?: Props<TElem>
-) => ControlItem<TElem>;
+) => (name: TSetting, label: string, props?: TProps) => ControlItem<TElem>;
 
 const getControlCreators = (getCreator: GetControlCreator) => ({
 	numericInput: getCreator(
-		(props) => input(Object.assign({ type: 'number' }, props)),
+		(props: Props<HTMLInputElement>) =>
+			input(Object.assign({ type: 'number' }, props)),
 		(elem) => ({
 			get: () => elem.value,
 			set: (value) => {
@@ -641,7 +666,28 @@ const getControlCreators = (getCreator: GetControlCreator) => ({
 		default: text.DEFAULT,
 	})),
 	select: getCreator(
-		() => selectEl({ value: text.DEFAULT }),
+		({
+			values,
+			getText,
+		}: {
+			values: readonly string[];
+			getText: (arg: string) => string;
+		}) => {
+			const elem = selectEl({ value: text.DEFAULT });
+			elem.append(
+				option({
+					value: text.DEFAULT,
+					textContent: text.DEFAULT,
+				}),
+				...values.map((value) =>
+					option({
+						value,
+						textContent: getText(value),
+					})
+				)
+			);
+			return elem;
+		},
 		(elem: HTMLSelectElement) => ({
 			get: () => elem.value,
 			set: (value) => {
@@ -652,121 +698,120 @@ const getControlCreators = (getCreator: GetControlCreator) => ({
 	),
 });
 
-const initMenu = async (updateChannelConfig: () => void) => {
-	const toOptions = (
-		values: readonly string[],
-		getText: (arg: string) => string
-	) => [
-		option({
-			value: text.DEFAULT,
-			textContent: text.DEFAULT,
-		}),
-		...values.map((value) =>
-			option({
-				value,
-				textContent: getText(value),
-			})
-		),
-	];
+const section = (
+	sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,
+	title: string,
+	sectionCfg: Cfg
+): HTMLDivElement => {
+	const control = getControlCreators(
+		(createElement, initVal) => (name, label, props) => {
+			const item = div();
+			const id = PREFIX + name + '-' + sectionId;
 
-	const section = (
-		sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,
-		title: string,
-		sectionCfg: Cfg
-	): HTMLDivElement => {
-		const control = getControlCreators(
-			(createElement, initVal) => (name, label, props) => {
-				const item = div();
-				const id = PREFIX + name + '-' + sectionId;
-				const elem = withOnChange(
-					Object.assign(createElement(props), props, {
-						id,
-						name,
-					}),
-					() => {
-						const value = val.get();
-						if (value === val.default) {
-							delete sectionCfg[name];
-						} else {
-							// @ts-ignore
-							sectionCfg[name] = value;
-						}
-					}
-				);
-				const val = initVal(elem);
-				const cfgValue = sectionCfg[name];
-				if (cfgValue) {
-					setTimeout(() => {
-						val.set(cfgValue.toString());
-					});
+			const elem = Object.assign(createElement(props), props, {
+				id,
+				name,
+			});
+			elem.addEventListener('change', () => {
+				const value = val.get();
+				if (value === val.default) {
+					delete sectionCfg[name];
+				} else {
+					// @ts-ignore
+					sectionCfg[name] = value;
 				}
-				item.append(labelEl(id, { textContent: label }), elem);
-				// @ts-ignore
-				menuControls[sectionId][name] = elem;
-				return { item, elem };
+			});
+
+			const val = initVal(elem);
+			const cfgValue = sectionCfg[name];
+			if (cfgValue) {
+				setTimeout(() => {
+					val.set(cfgValue.toString());
+				});
 			}
-		);
+			item.append(labelEl(id, { textContent: label }), elem);
+			// @ts-ignore
+			menuControls[sectionId][name] = elem;
+			return { item, elem };
+		}
+	);
 
-		const speedSelect = withControlOptions(
-			control.select(SPEED, text.SPEED),
-			toOptions(
-				['2', '1.75', '1.5', '1.25', plr.speedNormal, '0.75', '0.5', '0.25'],
-				(val) => val
-			)
-		);
-		if (sectionId === SECTION_GLOBAL) menu.firstFocusable = speedSelect.elem;
+	const speedSelect = control.select(SPEED, text.SPEED, {
+		values: [
+			'2',
+			'1.75',
+			'1.5',
+			'1.25',
+			plr.speedNormal,
+			'0.75',
+			'0.5',
+			'0.25',
+		],
+		getText: (val) => val,
+	});
+	if (sectionId === SECTION_GLOBAL) menu.firstFocusable = speedSelect.elem;
 
-		const sectionElement = div({ role: 'group' });
-		sectionElement.setAttribute('aria-labelledby', sectionId);
+	const sectionElement = div({ role: 'group' });
+	sectionElement.setAttribute('aria-labelledby', sectionId);
 
-		sectionElement.append(
-			getElCreator('span')({ textContent: title, id: sectionId }),
-			speedSelect.item,
-			...withHint(
-				new Hint('', {
-					textContent: text.CUSTOM_SPEED_HINT,
-				}),
-				(hint) =>
-					controlWith(withOnFocus)(
-						controlWith(withOnBlur)(
-							control.numericInput(CUSTOM_SPEED, text.CUSTOM_SPEED),
-							() => {
-								hint.hide();
-							}
-						),
-						() => {
+	sectionElement.append(
+		getElCreator('span')({ textContent: title, id: sectionId }),
+		speedSelect.item,
+		...withHint(
+			new Hint('', {
+				textContent: text.CUSTOM_SPEED_HINT,
+			}),
+			(hint) =>
+				withControlListeners(
+					control.numericInput(CUSTOM_SPEED, text.CUSTOM_SPEED),
+					{
+						blur: () => {
+							hint.hide();
+						},
+						focus: () => {
 							hint.show();
-						}
-					)
-			),
-			withControlOptions(
-				control.select(QUALITY, text.QUALITY),
-				toOptions(
-					['144', '240', '360', '480', '720', '1080', '1440', '2160', '4320'],
-					(val) => val + 'p'
+						},
+					}
 				)
-			).item,
-			...withHint(new Hint('Warning: '), (hint) =>
-				controlWith(withOnInput)(
-					control.numericInput(VOLUME, text.VOLUME, {
-						min: '0',
-						max: '100',
-					}),
-					function (this: HTMLInputElement) {
+		),
+		control.select(QUALITY, text.QUALITY, {
+			values: [
+				'144',
+				'240',
+				'360',
+				'480',
+				'720',
+				'1080',
+				'1440',
+				'2160',
+				'4320',
+			],
+			getText: (val) => val + 'p',
+		}).item,
+		...withHint(new Hint('Warning: '), (hint) =>
+			withControlListeners(
+				control.numericInput(VOLUME, text.VOLUME, {
+					min: '0',
+					max: '100',
+				}),
+				{
+					blur(this: HTMLInputElement) {
 						const warning = validateVolume(this.value);
 						if (warning) {
 							hint.show(warning);
 						} else {
 							hint.hide();
 						}
-					}
-				)
-			),
-			control.checkbox(SUBTITLES, text.SUBTITLES, checkbox()).item
-		);
-		return sectionElement;
-	};
+					},
+				}
+			)
+		),
+		control.checkbox(SUBTITLES, text.SUBTITLES, checkbox()).item
+	);
+	return sectionElement;
+};
 
+const initMenu = async (updateChannelConfig: () => void) => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		section(SECTION_GLOBAL, text.GLOBAL, cfg.global),
