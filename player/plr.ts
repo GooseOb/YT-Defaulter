@@ -1,4 +1,4 @@
-import { delay, until, restoreFocusAfter, findInNodeList } from './utils';
+import { delay, until, restoreFocusAfter, findInNodeList } from '../utils';
 
 export const plr = {
 	async set(el: HTMLElement) {

@@ -6,7 +6,7 @@ import { validateVolume } from './validateVolume';
 import { Hint } from '../hint';
 import { menu } from '.';
 import { getElCreator } from '../utils';
-import { plr } from '../plr';
+import { plr } from '../player';
 import { menuControls } from '../menu-controls';
 
 export const section = (

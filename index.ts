@@ -4,30 +4,13 @@ import { text, translations } from './text';
 import { style } from './style';
 import { div, button, btnClass, labelEl, checkbox } from './elements-creators';
 import { menu, section, settingsIcon } from './menu';
-import { plr } from './plr';
-import { logger } from './logger';
-import * as config from './cfg';
+import { plr, valueSetters } from './player';
+import * as config from './config';
 import { menuControls } from './menu-controls';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
-const cfgLocalStorage = localStorage[STORAGE_NAME];
-let cfg: ScriptCfg = cfgLocalStorage
-	? JSON.parse(cfgLocalStorage)
-	: {
-			_v: STORAGE_VERSION,
-			global: {},
-			channels: {},
-			flags: {
-				shortsToUsual: false,
-				newTab: false,
-				copySubs: false,
-				standardMusicSpeed: false,
-				enhancedBitrate: false,
-			},
-		};
-
-if (config.update(cfg)) config.save(cfg);
+if (config.update(config.value)) config.saveLS(config.value);
 
 let channelConfig = null as Partial<Cfg>;
 
@@ -37,7 +20,7 @@ const getActionsBar = () => $('actions')?.querySelector('ytd-menu-renderer');
 
 const getChannelUsername = (aboveTheFold: HTMLElement) =>
 	/(?<=@|\/c\/).+?$/.exec(
-		aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a')!.href
+		aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a').href
 	)?.[0];
 
 const untilChannelUsernameAppear = (aboveTheFold: HTMLElement) =>
@@ -46,72 +29,9 @@ const untilChannelUsernameAppear = (aboveTheFold: HTMLElement) =>
 const isMusicChannel = (aboveTheFold: HTMLElement) =>
 	!!aboveTheFold.querySelector('.badge-style-type-verified-artist');
 
-type YtSettingName = typeof SPEED | typeof QUALITY;
-
-type Comparator = (target: string, current: string) => boolean;
-const comparators: { readonly [P in YtSettingName]: Comparator } = {
-	// assuming the search is from the top
-	[QUALITY]: (target, current) =>
-		+target >= parseInt(current) &&
-		(cfg.flags.enhancedBitrate || !current.toLowerCase().includes('premium')),
-	[SPEED]: (target, current) => target === current,
-};
-type ValueSetterHelpers = {
-	_ytSettingItem(settingName: YtSettingName, value: string): void;
-};
-type ValueSetters = { [P in Setting]: (value: Required<Cfg>[P]) => void };
-
-const valueSetters: ValueSetters & ValueSetterHelpers = {
-	_ytSettingItem(settingName, value) {
-		const isOpen = plr.menu.isOpen();
-		const compare = comparators[settingName];
-		const btn = plr.menu.findInItem(settingName, (btn) =>
-			compare(value, btn.textContent!)
-		);
-		if (btn) {
-			btn.click();
-			plr.menu.setOpen(isOpen);
-		}
-	},
-	speed(value) {
-		this._ytSettingItem(SPEED, plr.isSpeedApplied ? plr.speedNormal : value);
-		plr.isSpeedApplied = !plr.isSpeedApplied;
-	},
-	customSpeed(value) {
-		try {
-			plr.video.playbackRate = plr.isSpeedApplied ? 1 : +value;
-		} catch {
-			logger.outOfRange('Custom speed');
-			return;
-		}
-		plr.isSpeedApplied = !plr.isSpeedApplied;
-	},
-	subtitles(value) {
-		if (plr.subtitlesBtn.ariaPressed !== value.toString())
-			plr.subtitlesBtn.click();
-	},
-	volume(value) {
-		const num = +value;
-		const isMuted = plr.muteBtn.dataset.titleNoTooltip !== 'Mute';
-		if (num === 0) {
-			if (!isMuted) plr.muteBtn.click();
-		} else {
-			if (isMuted) plr.muteBtn.click();
-			try {
-				plr.video.volume = num / 100;
-			} catch {
-				logger.outOfRange('Volume');
-			}
-		}
-	},
-	quality(value) {
-		this._ytSettingItem(QUALITY, value);
-	},
-};
-
 const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 	const settings = {
-		...cfg.global,
+		...config.value.global,
 		...channelConfig,
 	};
 	const isChannelSpeed = 'speed' in channelConfig;
@@ -129,9 +49,8 @@ const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 
 const applySettings = (settings: Cfg) => {
 	restoreFocusAfter(() => {
-		// @ts-expect-error
 		if (!isNaN(+settings.customSpeed)) {
-			valueSetters.customSpeed(settings.customSpeed!);
+			valueSetters.customSpeed(settings.customSpeed);
 		}
 
 		delete settings.customSpeed;
@@ -153,10 +72,10 @@ const controlCheckboxDiv = (
 	const elem = withOnClick(
 		checkbox({
 			id,
-			checked: cfg.flags[flagName],
+			checked: config.value.flags[flagName],
 		}),
 		function (this: HTMLInputElement) {
-			cfg.flags[flagName] = this.checked;
+			config.value.flags[flagName] = this.checked;
 		}
 	);
 	menuControls.flags[flagName] = elem;
@@ -167,7 +86,7 @@ const controlCheckboxDiv = (
 const initMenu = async (updateChannelConfig: () => void) => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
-		section(SECTION_GLOBAL, text.GLOBAL, cfg.global),
+		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
 		section(SECTION_LOCAL, text.LOCAL, channelConfig)
 	);
 
@@ -178,7 +97,8 @@ const initMenu = async (updateChannelConfig: () => void) => {
 	const controlDiv = div({ className: 'control-cont' });
 	controlDiv.append(
 		withOnClick(button(text.SAVE), () => {
-			config.save(cfg);
+			config.prune();
+			config.saveLS(config.value);
 			updateControlStatus(text.SAVE);
 		}),
 		withOnClick(button(text.EXPORT), () => {
@@ -188,21 +108,14 @@ const initMenu = async (updateChannelConfig: () => void) => {
 		}),
 		withOnClick(button(text.IMPORT), async () => {
 			try {
-				const raw = await navigator.clipboard.readText();
-				const newCfg = JSON.parse(raw);
-				if (typeof newCfg !== 'object' || !newCfg._v) {
-					throw new Error('Invalid data');
-				}
-				config.update(newCfg);
-				localStorage[STORAGE_NAME] = raw;
-				cfg = newCfg;
+				config.save(await navigator.clipboard.readText());
 				updateChannelConfig();
 			} catch (e) {
 				updateControlStatus('Import: ' + e.message);
 				return;
 			}
 			updateControlStatus(text.IMPORT);
-			menuControls.updateValues(cfg);
+			menuControls.updateValues(config.value);
 		})
 	);
 
@@ -246,9 +159,9 @@ const initMenu = async (updateChannelConfig: () => void) => {
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
-	const actionsBar = (await untilAppear(getActionsBar))!;
+	const actionsBar = await untilAppear(getActionsBar);
 	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
-	document.querySelector('ytd-popup-container')!.append(menu.element);
+	document.querySelector('ytd-popup-container').append(menu.element);
 	menu.width = menu.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
 };
@@ -260,7 +173,7 @@ const onPageChange = async () => {
 	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
 
 	const updateChannelConfig = () => {
-		channelConfig = cfg.channels[channelUsername!] ||= {};
+		channelConfig = config.value.channels[channelUsername] ||= {};
 	};
 
 	updateChannelConfig();
@@ -269,7 +182,7 @@ const onPageChange = async () => {
 
 	applySettings(
 		computeSettings(
-			cfg.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
+			config.value.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
 		)
 	);
 
@@ -289,11 +202,11 @@ setInterval(() => {
 }, 1_000);
 
 const onClick = (e: Event) => {
-	const { shortsToUsual, newTab } = cfg.flags;
+	const { shortsToUsual, newTab } = config.value.flags;
 	if (!(shortsToUsual || newTab)) return;
 	let el = e.target as HTMLAnchorElement;
 	if (el.tagName !== 'A') {
-		el = el.closest('a')!;
+		el = el.closest('a');
 		if (!el) return;
 	}
 	if (!/shorts\/|watch\?v=/.test(el.href)) return;
@@ -310,7 +223,7 @@ document.addEventListener(
 	(e) => {
 		if (e.code === 'Enter') return onClick(e);
 		if (!e.ctrlKey || e.shiftKey) return;
-		if (cfg.flags.copySubs && e.code === 'KeyC') {
+		if (config.value.flags.copySubs && e.code === 'KeyC') {
 			const plr = document.querySelector('.html5-video-player');
 			if (!plr?.classList.contains('ytp-fullscreen')) return;
 			const text = Array.from(
@@ -323,11 +236,11 @@ document.addEventListener(
 			e.preventDefault();
 			const customSpeedValue = channelConfig
 				? channelConfig.customSpeed ||
-					(!channelConfig.speed && cfg.global.customSpeed)
-				: cfg.global.customSpeed;
+					(!channelConfig.speed && config.value.global.customSpeed)
+				: config.value.global.customSpeed;
 			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 			restoreFocusAfter(() => {
-				valueSetters[SPEED]((channelConfig || cfg.global)[SPEED]);
+				valueSetters[SPEED]((channelConfig || config.value.global)[SPEED]);
 			});
 		}
 	},
