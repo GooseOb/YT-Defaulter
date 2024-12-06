@@ -9,14 +9,11 @@ import * as get from './element-getters';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
-if (config.update(config.value)) config.saveLS(config.value);
+if (config.update(config.value)) {
+	config.saveLS(config.value);
+}
 
-const isMusicChannel = (aboveTheFold: HTMLElement) =>
-	!!get.artistChannelBadge(aboveTheFold);
-
-const onPageChange = async () => {
-	if (location.pathname !== '/watch') return;
-
+const onVideoPage = async () => {
 	const aboveTheFold = await untilAppear(get.aboveTheFold);
 	config.channel.username =
 		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
@@ -24,11 +21,11 @@ const onPageChange = async () => {
 
 	await plr.set(await untilAppear(get.plr));
 
-	applySettings(
-		computeSettings(
-			config.value.flags.standardMusicSpeed && isMusicChannel(aboveTheFold)
-		)
-	);
+	const doNotChangeSpeed =
+		config.value.flags.standardMusicSpeed &&
+		!!get.artistChannelBadge(aboveTheFold);
+
+	applySettings(computeSettings(doNotChangeSpeed));
 
 	if (menu.value.element) {
 		menu.controls.updateThisChannel(config.channel.get());
@@ -41,7 +38,9 @@ let lastHref: string;
 setInterval(() => {
 	if (lastHref !== location.href) {
 		lastHref = location.href;
-		setTimeout(onPageChange, 1_000);
+		if (location.pathname === '/watch') {
+			setTimeout(onVideoPage, 1_000);
+		}
 	}
 }, 1_000);
 
