@@ -16,8 +16,7 @@ type GetControlCreator = <
 
 export const getControlCreators = (getCreator: GetControlCreator) => ({
 	numericInput: getCreator(
-		(props?: Props<HTMLInputElement>) =>
-			input(Object.assign({ type: 'number' }, props)),
+		(props?: Props<HTMLInputElement>) => input({ type: 'number', ...props }),
 		(elem) => ({
 			get: () => elem.value,
 			set: (value) => {
