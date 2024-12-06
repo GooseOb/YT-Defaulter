@@ -1,7 +1,7 @@
 {
 	"name": "yt-defaulter",
 	"author": "GooseOb",
-	"version": "1.11.2",
+	"version": "1.11.3",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/GooseOb/YT-Defaulter.git"
@@ -17,7 +17,7 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"bun-build-userscript": "^1.6.1",
+		"bun-build-userscript": "^1.6.2",
 		"husky": "^8.0.3",
 		"prettier": "^3.4.2"
 	}

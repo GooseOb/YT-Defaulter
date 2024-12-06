@@ -14,7 +14,7 @@ while ((tmp = pattern.exec(raw))) {
 export default {
 	// @ts-expect-error
 	entrypoints: ['src/index.ts'],
-	naming: 'dist/index.js',
+	naming: 'dist/script.user.js',
 	define,
 	userscript: {
 		logErrors: process.argv.includes('--watch'),
