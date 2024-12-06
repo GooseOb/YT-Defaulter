@@ -10,7 +10,7 @@ import {
 	checkbox,
 } from './utils/element-creators';
 import { menu, section, settingsIcon, controls } from './menu';
-import { plr, valueSetters } from './player';
+import { applySettings, plr, valueSetters } from './player';
 import * as config from './config';
 
 Object.assign(text, translations[document.documentElement.lang]);
@@ -50,21 +50,6 @@ const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 		delete settings.customSpeed;
 	}
 	return settings;
-};
-
-const applySettings = (settings: Cfg) => {
-	restoreFocusAfter(() => {
-		if (!isNaN(+settings.customSpeed)) {
-			valueSetters.customSpeed(settings.customSpeed);
-		}
-
-		delete settings.customSpeed;
-
-		for (const setting in settings) {
-			valueSetters[setting as Setting](settings[setting as never]);
-		}
-		plr.menu.setOpen(false);
-	});
 };
 
 const controlCheckboxDiv = (
