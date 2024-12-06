@@ -68,22 +68,18 @@ export const section = (
 	sectionElement.append(
 		getElCreator('span')({ textContent: title, id: sectionId }),
 		speedSelect.item,
-		...withHint(
-			new Hint('', {
-				textContent: text.CUSTOM_SPEED_HINT,
-			}),
-			(hint) =>
-				withControlListeners(
-					control.numericInput(CUSTOM_SPEED, text.CUSTOM_SPEED),
-					{
-						blur: () => {
-							hint.hide();
-						},
-						focus: () => {
-							hint.show();
-						},
-					}
-				)
+		...withHint(new Hint(''), (hint) =>
+			withControlListeners(
+				control.numericInput(CUSTOM_SPEED, text.CUSTOM_SPEED),
+				{
+					blur: () => {
+						hint.hide();
+					},
+					focus: () => {
+						hint.show(text.CUSTOM_SPEED_HINT);
+					},
+				}
+			)
 		),
 		control.select(QUALITY, text.QUALITY, {
 			values: [
