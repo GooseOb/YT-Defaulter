@@ -6,6 +6,7 @@ import { computeSettings } from './compute-settings';
 import * as config from './config';
 import * as get from './element-getters';
 import { onVideoPage } from './on-video-page';
+import { onClick } from './on-click';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
@@ -22,27 +23,6 @@ setInterval(() => {
 		}
 	}
 }, 1_000);
-
-const onClick = (e: Event) => {
-	const { shortsToUsual, newTab } = config.value.flags;
-	if (shortsToUsual || newTab) {
-		let el = e.target as HTMLAnchorElement;
-		if (el.tagName !== 'A') {
-			el = el.closest('a');
-		}
-		if (el) {
-			const isShorts = el.href.includes('/shorts/');
-			if (shortsToUsual && isShorts) {
-				el.href = el.href.replace('shorts/', 'watch?v=');
-			}
-			const isUsual = el.href.includes('/watch?v=');
-			if (newTab && (isShorts || isUsual)) {
-				el.target = '_blank';
-				e.stopPropagation();
-			}
-		}
-	}
-};
 
 document.addEventListener('click', onClick, { capture: true });
 document.addEventListener(
