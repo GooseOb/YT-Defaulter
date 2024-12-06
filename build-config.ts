@@ -17,7 +17,7 @@ export default {
 	naming: 'dist/index.js',
 	define,
 	userscript: {
-		logErrors: !process.argv.includes('--build'),
+		logErrors: process.argv.includes('--watch'),
 		transform: (code: string) =>
 			code
 				.replace(/\["([^"]+)"]:/g, '$1:')
