@@ -1,5 +1,5 @@
-import { getElCreator } from './utils/getElCreator';
-import { withListeners } from './utils/with';
+import { getElCreator } from './getElCreator';
+import { withListeners } from './with';
 
 export const div = getElCreator('div');
 export const input = getElCreator('input');

@@ -1,4 +1,4 @@
-import { div } from './elements-creators';
+import { div } from './utils/element-creators';
 
 export class Hint {
 	constructor(prefix: string) {

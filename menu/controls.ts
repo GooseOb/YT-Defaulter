@@ -1,4 +1,4 @@
-import { text } from './text';
+import { text } from '../text';
 
 const updateValuesIn = (controls: SettingControls, cfgPart: Readonly<Cfg>) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
@@ -18,7 +18,7 @@ const channelControls = () =>
 		[SUBTITLES]: null as HTMLInputElement,
 	}) satisfies SettingControls;
 
-export const menuControls = {
+export const controls = {
 	global: channelControls(),
 	thisChannel: channelControls(),
 	flags: {

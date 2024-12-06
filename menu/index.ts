@@ -2,6 +2,7 @@ import { debounce, isDescendantOrTheSame } from '../utils';
 
 export { section } from './section';
 export { settingsIcon } from './settings-icon';
+export { controls } from './controls';
 
 type Focusable = { focus(): void };
 

@@ -2,11 +2,16 @@ import { $, restoreFocusAfter, untilAppear } from './utils';
 import { withOnClick } from './utils/with';
 import { text, translations } from './text';
 import { style } from './style';
-import { div, button, btnClass, labelEl, checkbox } from './elements-creators';
-import { menu, section, settingsIcon } from './menu';
+import {
+	div,
+	button,
+	btnClass,
+	labelEl,
+	checkbox,
+} from './utils/element-creators';
+import { menu, section, settingsIcon, controls } from './menu';
 import { plr, valueSetters } from './player';
 import * as config from './config';
-import { menuControls } from './menu-controls';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
@@ -78,7 +83,7 @@ const controlCheckboxDiv = (
 			config.value.flags[flagName] = this.checked;
 		}
 	);
-	menuControls.flags[flagName] = elem;
+	controls.flags[flagName] = elem;
 	cont.append(labelEl(id, { textContent }), elem);
 	return cont;
 };
@@ -115,7 +120,7 @@ const initMenu = async (updateChannelConfig: () => void) => {
 				return;
 			}
 			updateControlStatus(text.IMPORT);
-			menuControls.updateValues(config.value);
+			controls.updateValues(config.value);
 		})
 	);
 
@@ -187,7 +192,7 @@ const onPageChange = async () => {
 	);
 
 	if (menu.element) {
-		menuControls.updateThisChannel(channelConfig);
+		controls.updateThisChannel(channelConfig);
 	} else {
 		await initMenu(updateChannelConfig);
 	}

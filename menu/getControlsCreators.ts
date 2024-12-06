@@ -1,4 +1,4 @@
-import { checkbox, input, option, selectEl } from '../elements-creators';
+import { checkbox, input, option, selectEl } from '../utils/element-creators';
 import { text } from '../text';
 
 type GetControlCreator = <

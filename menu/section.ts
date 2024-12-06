@@ -1,4 +1,4 @@
-import { checkbox, div, labelEl } from '../elements-creators';
+import { checkbox, div, labelEl } from '../utils/element-creators';
 import { text } from '../text';
 import { withControlListeners, withHint } from '../utils/with';
 import { getControlCreators } from './getControlsCreators';
@@ -7,7 +7,7 @@ import { Hint } from '../hint';
 import { menu } from '.';
 import { getElCreator } from '../utils';
 import { plr } from '../player';
-import { menuControls } from '../menu-controls';
+import { controls } from './controls';
 
 export const section = (
 	sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,
@@ -42,7 +42,7 @@ export const section = (
 			}
 			item.append(labelEl(id, { textContent: label }), elem);
 			// @ts-ignore
-			menuControls[sectionId][name] = elem;
+			controls[sectionId][name] = elem;
 			return { item, elem };
 		}
 	);
