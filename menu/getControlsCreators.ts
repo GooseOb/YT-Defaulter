@@ -1,8 +1,6 @@
 import { checkbox, input, option, selectEl } from '../elements-creators';
 import { text } from '../text';
 
-type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };
-
 type GetControlCreator = <
 	TSetting extends Setting,
 	TElem extends SettingControls[TSetting],

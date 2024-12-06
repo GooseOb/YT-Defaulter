@@ -1,5 +1,5 @@
 export const isDescendantOrTheSame = (
-	child: Readonly<Element | ParentNode>,
+	child: Readonly<Element | ParentNode> | null,
 	parents: readonly Readonly<ParentNode>[]
 ): boolean => {
 	while (child !== null) {

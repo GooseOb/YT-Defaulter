@@ -38,3 +38,4 @@ type ReadonlyInputWithHint = DeepReadonly<HTMLInputElement & { hint: Hint }>;
 type Control = HTMLSelectElement | HTMLInputElement;
 type SettingControls = Record<Setting, Control>;
 type Props<T extends HTMLElement> = Partial<T> & object;
+type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };

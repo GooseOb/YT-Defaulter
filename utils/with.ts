@@ -1,3 +1,5 @@
+import type { Hint } from '../hint';
+
 export const withHint = <
 	THint extends Hint,
 	TItem extends ControlItem<HTMLElement>,
