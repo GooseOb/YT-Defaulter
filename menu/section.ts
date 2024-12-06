@@ -4,7 +4,7 @@ import { withControlListeners, withHint } from '../utils/with';
 import { getControlCreators } from './getControlsCreators';
 import { validateVolume } from './validateVolume';
 import { Hint } from '../hint';
-import { menu } from '.';
+import { value } from './value';
 import { getElCreator } from '../utils';
 import { plr } from '../player';
 import { controls } from './controls';
@@ -60,7 +60,7 @@ export const section = (
 		],
 		getText: (val) => val,
 	});
-	if (sectionId === SECTION_GLOBAL) menu.firstFocusable = speedSelect.elem;
+	if (sectionId === SECTION_GLOBAL) value.firstFocusable = speedSelect.elem;
 
 	const sectionElement = div({ role: 'group' });
 	sectionElement.setAttribute('aria-labelledby', sectionId);

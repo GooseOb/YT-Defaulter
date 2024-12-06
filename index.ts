@@ -1,23 +1,13 @@
 import { $, restoreFocusAfter, untilAppear } from './utils';
-import { withOnClick } from './utils/with';
 import { text, translations } from './text';
 import { style } from './style';
-import {
-	div,
-	button,
-	btnClass,
-	labelEl,
-	checkbox,
-} from './utils/element-creators';
-import { menu, section, settingsIcon, controls } from './menu';
 import { applySettings, plr, valueSetters } from './player';
+import * as menu from './menu';
 import * as config from './config';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
 if (config.update(config.value)) config.saveLS(config.value);
-
-let channelConfig = null as Partial<Cfg>;
 
 const getPlr = () => $('movie_player');
 const getAboveTheFold = () => $('above-the-fold');
@@ -37,10 +27,10 @@ const isMusicChannel = (aboveTheFold: HTMLElement) =>
 const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 	const settings = {
 		...config.value.global,
-		...channelConfig,
+		...config.channel.value,
 	};
-	const isChannelSpeed = 'speed' in channelConfig;
-	const isChannelCustomSpeed = 'customSpeed' in channelConfig;
+	const isChannelSpeed = 'speed' in config.channel.value;
+	const isChannelCustomSpeed = 'customSpeed' in config.channel.value;
 	if (doNotChangeSpeed) {
 		settings.speed = plr.speedNormal;
 		delete settings.customSpeed;
@@ -52,110 +42,6 @@ const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 	return settings;
 };
 
-const controlCheckboxDiv = (
-	id: string,
-	flagName: FlagName,
-	textContent: string
-): HTMLDivElement => {
-	const cont = div({ className: 'check-cont' });
-	id = PREFIX + id;
-	const elem = withOnClick(
-		checkbox({
-			id,
-			checked: config.value.flags[flagName],
-		}),
-		function (this: HTMLInputElement) {
-			config.value.flags[flagName] = this.checked;
-		}
-	);
-	controls.flags[flagName] = elem;
-	cont.append(labelEl(id, { textContent }), elem);
-	return cont;
-};
-
-const initMenu = async (updateChannelConfig: () => void) => {
-	const sections = div({ className: PREFIX + 'sections' });
-	sections.append(
-		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
-		section(SECTION_LOCAL, text.LOCAL, channelConfig)
-	);
-
-	const controlStatus = div();
-	const updateControlStatus = (content: string) => {
-		controlStatus.textContent = `[${new Date().toLocaleTimeString()}] ${content}`;
-	};
-	const controlDiv = div({ className: 'control-cont' });
-	controlDiv.append(
-		withOnClick(button(text.SAVE), () => {
-			config.prune();
-			config.saveLS(config.value);
-			updateControlStatus(text.SAVE);
-		}),
-		withOnClick(button(text.EXPORT), () => {
-			navigator.clipboard.writeText(localStorage[STORAGE_NAME]).then(() => {
-				updateControlStatus(text.EXPORT);
-			});
-		}),
-		withOnClick(button(text.IMPORT), async () => {
-			try {
-				config.save(await navigator.clipboard.readText());
-				updateChannelConfig();
-			} catch (e) {
-				updateControlStatus('Import: ' + e.message);
-				return;
-			}
-			updateControlStatus(text.IMPORT);
-			controls.updateValues(config.value);
-		})
-	);
-
-	menu.btn = withOnClick(
-		button('', {
-			id: BTN_ID,
-			ariaLabel: text.OPEN_SETTINGS,
-			tabIndex: 0,
-		}),
-		() => {
-			menu.toggle();
-		}
-	);
-	menu.btn.setAttribute('aria-controls', MENU_ID);
-	menu.btn.classList.add(btnClass + '--icon-button');
-	menu.btn.append(settingsIcon());
-
-	menu.element = div({
-		id: MENU_ID,
-	});
-	menu.element.append(
-		sections,
-		controlCheckboxDiv('shorts', 'shortsToUsual', text.SHORTS),
-		controlCheckboxDiv('new-tab', 'newTab', text.NEW_TAB),
-		controlCheckboxDiv('copy-subs', 'copySubs', text.COPY_SUBS),
-		controlCheckboxDiv(
-			'standard-music-speed',
-			'standardMusicSpeed',
-			text.STANDARD_MUSIC_SPEED
-		),
-		controlCheckboxDiv(
-			'enhanced-bitrate',
-			'enhancedBitrate',
-			text.ENHANCED_BITRATE
-		),
-		controlDiv,
-		controlStatus
-	);
-	menu.element.addEventListener('keyup', (e) => {
-		const el = e.target as HTMLInputElement;
-		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
-	});
-
-	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
-	document.querySelector('ytd-popup-container').append(menu.element);
-	menu.width = menu.element.getBoundingClientRect().width;
-	sections.style.maxWidth = sections.offsetWidth + 'px';
-};
-
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
 
@@ -163,7 +49,7 @@ const onPageChange = async () => {
 	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
 
 	const updateChannelConfig = () => {
-		channelConfig = config.value.channels[channelUsername] ||= {};
+		config.channel.set(channelUsername);
 	};
 
 	updateChannelConfig();
@@ -176,10 +62,10 @@ const onPageChange = async () => {
 		)
 	);
 
-	if (menu.element) {
-		controls.updateThisChannel(channelConfig);
+	if (menu.value.element) {
+		menu.controls.updateThisChannel(config.channel.value);
 	} else {
-		await initMenu(updateChannelConfig);
+		await menu.init(updateChannelConfig, getActionsBar);
 	}
 };
 
@@ -224,20 +110,22 @@ document.addEventListener(
 		} else if (e.code === 'Space') {
 			e.stopPropagation();
 			e.preventDefault();
-			const customSpeedValue = channelConfig
-				? channelConfig.customSpeed ||
-					(!channelConfig.speed && config.value.global.customSpeed)
+			const customSpeedValue = config.channel.value
+				? config.channel.value.customSpeed ||
+					(!config.channel.value.speed && config.value.global.customSpeed)
 				: config.value.global.customSpeed;
 			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 			restoreFocusAfter(() => {
-				valueSetters[SPEED]((channelConfig || config.value.global)[SPEED]);
+				valueSetters[SPEED](
+					(config.channel.value || config.value.global)[SPEED]
+				);
 			});
 		}
 	},
 	{ capture: true }
 );
 const listener = () => {
-	if (menu.isOpen) menu.fixPosition();
+	if (menu.value.isOpen) menu.value.fixPosition();
 };
 window.addEventListener('scroll', listener);
 window.addEventListener('resize', listener);
