@@ -8,6 +8,7 @@ export const update = (cfg: ScriptCfg) => {
 			case 2:
 				cfg.flags.standardMusicSpeed = false;
 				cfg._v = 3;
+			// fall through
 			case 3:
 				cfg.global.quality = (cfg.global as any).qualityMax;
 				delete (cfg.global as any).qualityMax;
