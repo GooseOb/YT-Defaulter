@@ -1,10 +1,10 @@
 {
-	"files": ["index.ts", "types.ts"],
 	"types": ["bun-types"],
 	"compilerOptions": {
 		"noImplicitAny": true,
 		"target": "es2022",
 		"removeComments": true,
-		"isolatedModules": true
+		"isolatedModules": true,
+		"moduleResolution": "node"
 	}
 }
