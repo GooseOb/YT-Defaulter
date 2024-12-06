@@ -4,10 +4,10 @@ import { plr } from './player';
 export const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
 	const settings = {
 		...config.value.global,
-		...config.channel.value,
+		...config.channel.get(),
 	};
-	const isChannelSpeed = 'speed' in config.channel.value;
-	const isChannelCustomSpeed = 'customSpeed' in config.channel.value;
+	const isChannelSpeed = 'speed' in config.channel.get();
+	const isChannelCustomSpeed = 'customSpeed' in config.channel.get();
 	if (doNotChangeSpeed) {
 		settings.speed = plr.speedNormal;
 		delete settings.customSpeed;

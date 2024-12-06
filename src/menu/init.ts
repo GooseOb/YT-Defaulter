@@ -36,11 +36,11 @@ const controlCheckboxDiv = (
 	return cont;
 };
 
-export const init = async (updateChannelConfig: () => void) => {
+export const init = async () => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
-		section(SECTION_LOCAL, text.LOCAL, config.channel.value)
+		section(SECTION_LOCAL, text.LOCAL, config.channel.get())
 	);
 
 	const controlStatus = div();
@@ -62,7 +62,6 @@ export const init = async (updateChannelConfig: () => void) => {
 		withOnClick(button(text.IMPORT), async () => {
 			try {
 				config.save(await navigator.clipboard.readText());
-				updateChannelConfig();
 			} catch (e) {
 				updateControlStatus('Import: ' + e.message);
 				return;

@@ -18,15 +18,9 @@ const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
 
 	const aboveTheFold = await untilAppear(get.aboveTheFold);
-	const channelUsername =
+	config.channel.username =
 		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
 		'';
-
-	const updateChannelConfig = () => {
-		config.channel.set(channelUsername);
-	};
-
-	updateChannelConfig();
 
 	await plr.set(await untilAppear(get.plr));
 
@@ -37,9 +31,9 @@ const onPageChange = async () => {
 	);
 
 	if (menu.value.element) {
-		menu.controls.updateThisChannel(config.channel.value);
+		menu.controls.updateThisChannel(config.channel.get());
 	} else {
-		await menu.init(updateChannelConfig);
+		await menu.init();
 	}
 };
 
@@ -84,15 +78,14 @@ document.addEventListener(
 		} else if (e.code === 'Space') {
 			e.stopPropagation();
 			e.preventDefault();
-			const customSpeedValue = config.channel.value
-				? config.channel.value.customSpeed ||
-					(!config.channel.value.speed && config.value.global.customSpeed)
+			const channelCfg = config.channel.get();
+			const customSpeedValue = channelCfg
+				? channelCfg.customSpeed ||
+					(!channelCfg.speed && config.value.global.customSpeed)
 				: config.value.global.customSpeed;
 			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
 			restoreFocusAfter(() => {
-				valueSetters[SPEED](
-					(config.channel.value || config.value.global)[SPEED]
-				);
+				valueSetters[SPEED]((channelCfg || config.value.global)[SPEED]);
 			});
 		}
 	},
