@@ -97,10 +97,5 @@ document.addEventListener(
 	},
 	{ capture: true }
 );
-const listener = () => {
-	if (menu.value.isOpen) menu.value.fixPosition();
-};
-window.addEventListener('scroll', listener);
-window.addEventListener('resize', listener);
 
 document.head.append(style);

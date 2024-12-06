@@ -116,4 +116,10 @@ export const init = async () => {
 	get.popupContainer().append(value.element);
 	value.width = value.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
+
+	const listener = () => {
+		if (value.isOpen) value.fixPosition();
+	};
+	window.addEventListener('scroll', listener);
+	window.addEventListener('resize', listener);
 };
