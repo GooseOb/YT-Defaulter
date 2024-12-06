@@ -65,28 +65,30 @@ document.addEventListener('click', onClick, { capture: true });
 document.addEventListener(
 	'keyup',
 	(e) => {
-		if (e.code === 'Enter') return onClick(e);
-		if (!e.ctrlKey || e.shiftKey) return;
-		if (config.value.flags.copySubs && e.code === 'KeyC') {
-			const plr = get.videoPlr();
-			if (!plr?.classList.contains('ytp-fullscreen')) return;
-			const text = Array.from(
-				get.videoPlrCaptions(plr),
-				(line) => line.textContent
-			).join(' ');
-			navigator.clipboard.writeText(text);
-		} else if (e.code === 'Space') {
-			e.stopPropagation();
-			e.preventDefault();
-			const channelCfg = config.channel.get();
-			const customSpeedValue = channelCfg
-				? channelCfg.customSpeed ||
-					(!channelCfg.speed && config.value.global.customSpeed)
-				: config.value.global.customSpeed;
-			if (customSpeedValue) return valueSetters.customSpeed(customSpeedValue);
-			restoreFocusAfter(() => {
-				valueSetters[SPEED]((channelCfg || config.value.global)[SPEED]);
-			});
+		if (e.code === 'Enter') {
+			onClick(e);
+		} else if (e.ctrlKey && !e.shiftKey) {
+			if (config.value.flags.copySubs && e.code === 'KeyC') {
+				const plr = get.videoPlr();
+				if (plr?.classList.contains('ytp-fullscreen')) {
+					const text = Array.from(
+						get.videoPlrCaptions(plr),
+						(line) => line.textContent
+					).join(' ');
+					navigator.clipboard.writeText(text);
+				}
+			} else if (e.code === 'Space') {
+				e.stopPropagation();
+				e.preventDefault();
+				const settings = computeSettings(false);
+				if (settings.speed) {
+					restoreFocusAfter(() => {
+						valueSetters.speed(settings.speed);
+					});
+				} else if (settings.customSpeed) {
+					valueSetters.customSpeed(settings.customSpeed);
+				}
+			}
 		}
 	},
 	{ capture: true }
