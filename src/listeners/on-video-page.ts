@@ -1,9 +1,9 @@
-import { untilAppear } from './utils';
-import { applySettings, plr } from './player';
-import { computeSettings } from './compute-settings';
-import * as get from './element-getters';
-import * as config from './config';
-import * as menu from './menu';
+import { untilAppear } from '../utils';
+import { applySettings, plr } from '../player';
+import { computeSettings } from '../compute-settings';
+import * as get from '../element-getters';
+import * as config from '../config';
+import * as menu from '../menu';
 
 export const onVideoPage = async () => {
 	const aboveTheFold = await untilAppear(get.aboveTheFold);

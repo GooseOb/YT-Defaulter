@@ -1,4 +1,4 @@
-import { value } from './config';
+import { value } from '../config';
 
 export const onClick = (e: Event) => {
 	const { shortsToUsual, newTab } = value.flags;
