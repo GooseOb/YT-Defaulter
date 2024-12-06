@@ -14,6 +14,6 @@ export class Hint {
 		this.element.style.display = 'block';
 		if (msg) this.element.textContent = this.prefix + msg;
 	}
-	private prefix: string;
+	private readonly prefix: string;
 	element: HTMLDivElement;
 }
