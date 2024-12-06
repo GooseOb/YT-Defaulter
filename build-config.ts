@@ -4,7 +4,7 @@ import type { BuildUserscriptConfig } from 'bun-build-userscript';
 const define: Record<string, string> = {};
 
 const raw = await readFile('src/constants.ts', 'utf8');
-const pattern = /(\S+):\s*([^,;]+)/g;
+const pattern = /([A-Z_0-9]+):\s*('[^']+'|[^,;]+)/g;
 
 let tmp: RegExpExecArray | null;
 while ((tmp = pattern.exec(raw))) {
