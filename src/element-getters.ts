@@ -22,7 +22,7 @@ export const plrMenuItemsGetter =
 		menu.querySelectorAll<T>('.ytp-menuitem[role="menuitem"]');
 
 export const menuSubItems = (item: HTMLElement) =>
-	item.querySelectorAll('.ytp-panel-animate-forward .ytp-menuitem-label');
+	item.querySelectorAll('.ytp-menuitem-label');
 
 export const channelUsernameElementGetter = (aboveTheFold: HTMLElement) => () =>
 	aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a');
