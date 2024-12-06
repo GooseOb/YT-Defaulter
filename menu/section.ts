@@ -102,7 +102,7 @@ export const section = (
 					max: '100',
 				}),
 				{
-					blur(this: HTMLInputElement) {
+					blur() {
 						const warning = validateVolume(this.value);
 						if (warning) {
 							hint.show(warning);

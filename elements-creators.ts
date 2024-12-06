@@ -31,10 +31,10 @@ export const button = <T extends Props<HTMLButtonElement>>(
 			...props,
 		}),
 		{
-			focus(this: HTMLButtonElement) {
+			focus() {
 				this.classList.add(btnClassFocused);
 			},
-			blur(this: HTMLButtonElement) {
+			blur() {
 				this.classList.remove(btnClassFocused);
 			},
 		}

@@ -32,8 +32,10 @@ export const withListeners = <TElem extends HTMLElement>(
 };
 
 const controlWith =
-	<TElem extends HTMLElement>(withFn: (elem: TElem, ...args: any[]) => TElem) =>
-	(obj: ControlItem<TElem>, ...args: any[]) => {
+	<TElem extends HTMLElement, TArgs extends any[]>(
+		withFn: (elem: TElem, ...args: TArgs) => TElem
+	) =>
+	(obj: ControlItem<TElem>, ...args: TArgs) => {
 		withFn(obj.elem, ...args);
 		return obj;
 	};
