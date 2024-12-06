@@ -11,7 +11,7 @@ import { section } from './section';
 import { settingsIcon } from './settings-icon';
 import * as config from '../config';
 import { withOnClick } from '../utils/with';
-import { menu } from '.';
+import { value } from './value';
 import { untilAppear } from '../utils';
 
 const controlCheckboxDiv = (
@@ -74,24 +74,24 @@ export const init = async (
 		})
 	);
 
-	menu.btn = withOnClick(
+	value.btn = withOnClick(
 		button('', {
 			id: BTN_ID,
 			ariaLabel: text.OPEN_SETTINGS,
 			tabIndex: 0,
 		}),
 		() => {
-			menu.toggle();
+			value.toggle();
 		}
 	);
-	menu.btn.setAttribute('aria-controls', MENU_ID);
-	menu.btn.classList.add(btnClass + '--icon-button');
-	menu.btn.append(settingsIcon());
+	value.btn.setAttribute('aria-controls', MENU_ID);
+	value.btn.classList.add(btnClass + '--icon-button');
+	value.btn.append(settingsIcon());
 
-	menu.element = div({
+	value.element = div({
 		id: MENU_ID,
 	});
-	menu.element.append(
+	value.element.append(
 		sections,
 		controlCheckboxDiv('shorts', 'shortsToUsual', text.SHORTS),
 		controlCheckboxDiv('new-tab', 'newTab', text.NEW_TAB),
@@ -109,14 +109,14 @@ export const init = async (
 		controlDiv,
 		controlStatus
 	);
-	menu.element.addEventListener('keyup', (e) => {
+	value.element.addEventListener('keyup', (e) => {
 		const el = e.target as HTMLInputElement;
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
 	const actionsBar = await untilAppear(getActionsBar);
-	actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
-	document.querySelector('ytd-popup-container').append(menu.element);
-	menu.width = menu.element.getBoundingClientRect().width;
+	actionsBar.insertBefore(value.btn, actionsBar.lastChild);
+	document.querySelector('ytd-popup-container').append(value.element);
+	value.width = value.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
 };
