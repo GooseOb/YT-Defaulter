@@ -1,4 +1,5 @@
 import { getElCreator } from './utils/getElCreator';
+import { withListeners } from './utils/with';
 
 export const div = getElCreator('div');
 export const input = getElCreator('input');
@@ -23,14 +24,18 @@ export const button = <T extends Props<HTMLButtonElement>>(
 	textContent: string,
 	props?: DeepReadonly<T>
 ) =>
-	_button({
-		textContent,
-		className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
-		onfocus(this: HTMLButtonElement) {
-			this.classList.add(btnClassFocused);
-		},
-		onblur(this: HTMLButtonElement) {
-			this.classList.remove(btnClassFocused);
-		},
-		...props,
-	});
+	withListeners(
+		_button({
+			textContent,
+			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
+			...props,
+		}),
+		{
+			focus(this: HTMLButtonElement) {
+				this.classList.add(btnClassFocused);
+			},
+			blur(this: HTMLButtonElement) {
+				this.classList.remove(btnClassFocused);
+			},
+		}
+	);
