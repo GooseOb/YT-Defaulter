@@ -3,18 +3,12 @@ import type { BuildUserscriptConfig } from 'bun-build-userscript';
 
 const define: Record<string, string> = {};
 
-const rawArr = /declare const[^;]+?;/.exec(
-	await readFile('constants.ts', 'utf8')
-);
+const raw = await readFile('constants.ts', 'utf8');
+const pattern = /(\S+):\s*([^,;]+)/g;
 
-if (rawArr) {
-	const [raw] = rawArr;
-	const pattern = /(\S+):\s*([^,;]+)/g;
-
-	let tmp: RegExpExecArray | null;
-	while ((tmp = pattern.exec(raw))) {
-		define[tmp[1]] = tmp[2];
-	}
+let tmp: RegExpExecArray | null;
+while ((tmp = pattern.exec(raw))) {
+	define[tmp[1]] = tmp[2];
 }
 
 export default {
