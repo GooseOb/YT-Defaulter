@@ -1,38 +1,17 @@
-import { restoreFocusAfter, untilAppear } from './utils';
+import { restoreFocusAfter } from './utils';
 import { text, translations } from './text';
 import { style } from './style';
-import { applySettings, plr, valueSetters } from './player';
+import { valueSetters } from './player';
 import { computeSettings } from './compute-settings';
-import * as menu from './menu';
 import * as config from './config';
 import * as get from './element-getters';
+import { onVideoPage } from './on-video-page';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
 if (config.update(config.value)) {
 	config.saveLS(config.value);
 }
-
-const onVideoPage = async () => {
-	const aboveTheFold = await untilAppear(get.aboveTheFold);
-	config.channel.username =
-		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
-		'';
-
-	await plr.set(await untilAppear(get.plr));
-
-	const doNotChangeSpeed =
-		config.value.flags.standardMusicSpeed &&
-		!!get.artistChannelBadge(aboveTheFold);
-
-	applySettings(computeSettings(doNotChangeSpeed));
-
-	if (menu.value.element) {
-		menu.controls.updateThisChannel(config.channel.get());
-	} else {
-		await menu.init();
-	}
-};
 
 let lastHref: string;
 setInterval(() => {
