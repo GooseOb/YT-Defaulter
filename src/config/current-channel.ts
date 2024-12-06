@@ -3,6 +3,7 @@ import { value } from './value';
 export const channel = {
 	username: '',
 	get() {
-		return (value.channels[this.username] ||= {});
+		value.channels[this.username] ||= {};
+		return value.channels[this.username];
 	},
 };
