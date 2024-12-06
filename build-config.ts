@@ -3,7 +3,9 @@ import type { BuildUserscriptConfig } from 'bun-build-userscript';
 
 const define: Record<string, string> = {};
 
-const rawArr = /declare const[^;]+?;/.exec(await readFile('index.ts', 'utf8'));
+const rawArr = /declare const[^;]+?;/.exec(
+	await readFile('constants.ts', 'utf8')
+);
 
 if (rawArr) {
 	const [raw] = rawArr;
