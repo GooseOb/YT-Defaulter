@@ -13,6 +13,7 @@ import * as config from '../config';
 import { withOnClick } from '../utils/with';
 import { value } from './value';
 import { untilAppear } from '../utils';
+import * as get from '../element-getters';
 
 const controlCheckboxDiv = (
 	id: string,
@@ -35,10 +36,7 @@ const controlCheckboxDiv = (
 	return cont;
 };
 
-export const init = async (
-	updateChannelConfig: () => void,
-	getActionsBar: () => Element
-) => {
+export const init = async (updateChannelConfig: () => void) => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
@@ -114,9 +112,9 @@ export const init = async (
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
-	const actionsBar = await untilAppear(getActionsBar);
+	const actionsBar = await untilAppear(get.actionsBar);
 	actionsBar.insertBefore(value.btn, actionsBar.lastChild);
-	document.querySelector('ytd-popup-container').append(value.element);
+	get.popupContainer().append(value.element);
 	value.width = value.element.getBoundingClientRect().width;
 	sections.style.maxWidth = sections.offsetWidth + 'px';
 };

@@ -1,17 +1,18 @@
+import * as get from '../element-getters';
 import { delay, until, restoreFocusAfter, findInNodeList } from '../utils';
 
 export const plr = {
 	async set(el: HTMLElement) {
+		const getEl = get.plrGetters(el);
 		this.isSpeedApplied = false;
 		await delay(1_000);
-		const getAd = () => el.querySelector('.ytp-ad-player-overlay');
-		await until(getAd, (ad) => !ad, 200_000);
-		this.video ||= el.querySelector('.html5-main-video');
-		this.subtitlesBtn ||= el.querySelector('.ytp-subtitles-button');
-		this.muteBtn ||= el.querySelector('.ytp-mute-button');
+		await until(getEl.ad, (ad) => !ad, 200_000);
+		this.video ||= getEl.video();
+		this.subtitlesBtn ||= getEl.subtitlesBtn();
+		this.muteBtn ||= getEl.muteBtn();
 
-		this.menu.element ||= el.querySelector('.ytp-settings-menu');
-		this.menu._btn ||= el.querySelector('.ytp-settings-button');
+		this.menu.element ||= getEl.menu.element();
+		this.menu._btn ||= getEl.menu.btn();
 		const clickBtn = () => {
 			this.menu._btn.click();
 		};
@@ -20,11 +21,12 @@ export const plr = {
 		await delay(50);
 		restoreFocusAfter(clickBtn);
 
-		const getMenuItems = () =>
-			plr.menu.element.querySelectorAll<YtSettingItem>(
-				'.ytp-menuitem[role="menuitem"]'
-			);
-		plr.menu.setSettingItems(await until(getMenuItems, (arr) => !!arr.length));
+		plr.menu.setSettingItems(
+			await until(
+				get.plrMenuItemsGetter<YtSettingItem>(plr.menu.element),
+				(arr) => !!arr.length
+			)
+		);
 		if (!this.speedNormal)
 			restoreFocusAfter(() => {
 				this.speedNormal = plr.menu.findInItem(
@@ -51,9 +53,7 @@ export const plr = {
 		openItem(item: Readonly<YtSettingItem>) {
 			this.setOpen(true);
 			item.click();
-			return this.element.querySelectorAll(
-				'.ytp-panel-animate-forward .ytp-menuitem-label'
-			);
+			return get.menuSubItems(item);
 		},
 		settingItems: {
 			[SPEED]: null,

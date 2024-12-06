@@ -1,35 +1,26 @@
-import { $, restoreFocusAfter, untilAppear } from './utils';
+import { restoreFocusAfter, untilAppear } from './utils';
 import { text, translations } from './text';
 import { style } from './style';
 import { applySettings, plr, valueSetters } from './player';
+import { computeSettings } from './compute-settings';
 import * as menu from './menu';
 import * as config from './config';
-import { computeSettings } from './compute-settings';
+import * as get from './element-getters';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
 if (config.update(config.value)) config.saveLS(config.value);
 
-const getPlr = () => $('movie_player');
-const getAboveTheFold = () => $('above-the-fold');
-const getActionsBar = () => $('actions')?.querySelector('ytd-menu-renderer');
-
-const getChannelUsername = (aboveTheFold: HTMLElement) =>
-	/(?<=@|\/c\/).+?$/.exec(
-		aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a').href
-	)?.[0];
-
-const untilChannelUsernameAppear = (aboveTheFold: HTMLElement) =>
-	untilAppear(() => getChannelUsername(aboveTheFold)).catch(() => '');
-
 const isMusicChannel = (aboveTheFold: HTMLElement) =>
-	!!aboveTheFold.querySelector('.badge-style-type-verified-artist');
+	!!get.artistChannelBadge(aboveTheFold);
 
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
 
-	const aboveTheFold = await untilAppear(getAboveTheFold);
-	const channelUsername = await untilChannelUsernameAppear(aboveTheFold);
+	const aboveTheFold = await untilAppear(get.aboveTheFold);
+	const channelUsername =
+		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
+		'';
 
 	const updateChannelConfig = () => {
 		config.channel.set(channelUsername);
@@ -37,7 +28,7 @@ const onPageChange = async () => {
 
 	updateChannelConfig();
 
-	await plr.set(await untilAppear(getPlr));
+	await plr.set(await untilAppear(get.plr));
 
 	applySettings(
 		computeSettings(
@@ -48,7 +39,7 @@ const onPageChange = async () => {
 	if (menu.value.element) {
 		menu.controls.updateThisChannel(config.channel.value);
 	} else {
-		await menu.init(updateChannelConfig, getActionsBar);
+		await menu.init(updateChannelConfig);
 	}
 };
 
@@ -83,10 +74,10 @@ document.addEventListener(
 		if (e.code === 'Enter') return onClick(e);
 		if (!e.ctrlKey || e.shiftKey) return;
 		if (config.value.flags.copySubs && e.code === 'KeyC') {
-			const plr = document.querySelector('.html5-video-player');
+			const plr = get.videoPlr();
 			if (!plr?.classList.contains('ytp-fullscreen')) return;
 			const text = Array.from(
-				plr.querySelectorAll('.captions-text > span'),
+				get.videoPlrCaptions(plr),
 				(line) => line.textContent
 			).join(' ');
 			navigator.clipboard.writeText(text);
