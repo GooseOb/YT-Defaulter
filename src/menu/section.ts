@@ -1,8 +1,8 @@
 import { checkbox, div, labelEl } from '../utils/element-creators';
 import { text } from '../text';
 import { withControlListeners, withHint } from '../utils/with';
-import { getControlCreators } from './getControlsCreators';
-import { validateVolume } from './validateVolume';
+import { getControlCreators } from './get-controls-creators';
+import { validateVolume } from './validate-volume';
 import { Hint } from '../hint';
 import { value } from './value';
 import { getElCreator } from '../utils';

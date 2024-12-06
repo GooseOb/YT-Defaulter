@@ -1,4 +1,4 @@
-import { getElCreator } from './getElCreator';
+import { getElCreator } from './get-el-creator';
 import { withListeners } from './with';
 
 export const div = getElCreator('div');
