@@ -47,17 +47,22 @@ setInterval(() => {
 
 const onClick = (e: Event) => {
 	const { shortsToUsual, newTab } = config.value.flags;
-	if (!(shortsToUsual || newTab)) return;
-	let el = e.target as HTMLAnchorElement;
-	if (el.tagName !== 'A') {
-		el = el.closest('a');
-		if (!el) return;
-	}
-	if (!/shorts\/|watch\?v=/.test(el.href)) return;
-	if (shortsToUsual) el.href = el.href.replace('shorts/', 'watch?v=');
-	if (newTab) {
-		el.target = '_blank';
-		e.stopPropagation();
+	if (shortsToUsual || newTab) {
+		let el = e.target as HTMLAnchorElement;
+		if (el.tagName !== 'A') {
+			el = el.closest('a');
+		}
+		if (el) {
+			const isShorts = el.href.includes('/shorts/');
+			if (shortsToUsual && isShorts) {
+				el.href = el.href.replace('shorts/', 'watch?v=');
+			}
+			const isUsual = el.href.includes('/watch?v=');
+			if (newTab && (isShorts || isUsual)) {
+				el.target = '_blank';
+				e.stopPropagation();
+			}
+		}
 	}
 };
 
