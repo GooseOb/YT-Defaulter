@@ -3,7 +3,7 @@ import type { BuildUserscriptConfig } from 'bun-build-userscript';
 
 const define: Record<string, string> = {};
 
-const raw = await readFile('constants.ts', 'utf8');
+const raw = await readFile('src/constants.ts', 'utf8');
 const pattern = /(\S+):\s*([^,;]+)/g;
 
 let tmp: RegExpExecArray | null;
@@ -13,6 +13,7 @@ while ((tmp = pattern.exec(raw))) {
 
 export default {
 	// @ts-expect-error
+	entrypoints: ['src/index.ts'],
 	naming: 'dist/index.js',
 	define,
 	userscript: {
