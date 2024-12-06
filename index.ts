@@ -4,6 +4,7 @@ import { style } from './style';
 import { applySettings, plr, valueSetters } from './player';
 import * as menu from './menu';
 import * as config from './config';
+import { computeSettings } from './compute-settings';
 
 Object.assign(text, translations[document.documentElement.lang]);
 
@@ -23,24 +24,6 @@ const untilChannelUsernameAppear = (aboveTheFold: HTMLElement) =>
 
 const isMusicChannel = (aboveTheFold: HTMLElement) =>
 	!!aboveTheFold.querySelector('.badge-style-type-verified-artist');
-
-const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
-	const settings = {
-		...config.value.global,
-		...config.channel.value,
-	};
-	const isChannelSpeed = 'speed' in config.channel.value;
-	const isChannelCustomSpeed = 'customSpeed' in config.channel.value;
-	if (doNotChangeSpeed) {
-		settings.speed = plr.speedNormal;
-		delete settings.customSpeed;
-	} else if (isChannelCustomSpeed) {
-		delete settings.speed;
-	} else if (isChannelSpeed) {
-		delete settings.customSpeed;
-	}
-	return settings;
-};
 
 const onPageChange = async () => {
 	if (location.pathname !== '/watch') return;
