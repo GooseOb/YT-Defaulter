@@ -1,20 +1,29 @@
 import * as config from './config';
 import { plr } from './player';
 
-export const computeSettings = (doNotChangeSpeed: boolean): Cfg => {
+/**
+ * Priority of speed settings:
+ * 0. Use normal speed
+ * 1. Channel custom speed
+ * 2. Channel speed
+ * 3. Global custom speed
+ * 4. Global speed
+ */
+export const computeSettings = (doUseNormalSpeed: boolean): Cfg => {
+	const channel = config.channel.get();
 	const settings = {
 		...config.value.global,
-		...config.channel.get(),
+		...channel,
 	};
-	const isChannelSpeed = 'speed' in config.channel.get();
-	const isChannelCustomSpeed = 'customSpeed' in config.channel.get();
-	if (doNotChangeSpeed) {
+	if (doUseNormalSpeed) {
 		settings.speed = plr.speedNormal;
 		delete settings.customSpeed;
-	} else if (isChannelCustomSpeed) {
+	} else if ('customSpeed' in channel) {
 		delete settings.speed;
-	} else if (isChannelSpeed) {
+	} else if ('speed' in channel) {
 		delete settings.customSpeed;
+	} else if ('customSpeed' in settings) {
+		delete settings.speed;
 	}
 	return settings;
 };
