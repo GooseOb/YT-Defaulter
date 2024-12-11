@@ -1,5 +1,5 @@
 import * as config from '../config';
-import { logger } from '../logger';
+import * as logger from '../logger';
 import { plr } from '../player';
 
 type YtSettingName = typeof SPEED | typeof QUALITY;
