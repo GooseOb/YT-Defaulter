@@ -3,7 +3,7 @@ import { valueSetters } from '../player';
 import { computeSettings } from '../compute-settings';
 import * as config from '../config';
 import * as get from '../element-getters';
-import { onClick } from './on-click';
+import { onClick } from './click';
 
 export const onKeyup = (e: KeyboardEvent) => {
 	if (e.code === 'Enter') {

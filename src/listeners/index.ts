@@ -1,3 +1,3 @@
-export * from './on-click';
-export * from './on-keyup';
-export * from './on-video-page';
+export * from './click';
+export * from './keyup';
+export * from './video-page';
