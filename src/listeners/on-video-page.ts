@@ -7,21 +7,24 @@ import * as menu from '../menu';
 
 export const onVideoPage = async () => {
 	const aboveTheFold = await untilAppear(get.aboveTheFold);
+
 	config.channel.username =
 		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
 		'';
 
-	await plr.set(await untilAppear(get.plr));
+	untilAppear(get.plr)
+		.then((plrElement) => plr.set(plrElement))
+		.then(() => {
+			const doNotChangeSpeed =
+				config.value.flags.standardMusicSpeed &&
+				!!get.artistChannelBadge(aboveTheFold);
 
-	const doNotChangeSpeed =
-		config.value.flags.standardMusicSpeed &&
-		!!get.artistChannelBadge(aboveTheFold);
-
-	applySettings(computeSettings(doNotChangeSpeed));
+			applySettings(computeSettings(doNotChangeSpeed));
+		});
 
 	if (menu.value.element) {
 		menu.controls.updateThisChannel(config.channel.get());
 	} else {
-		await menu.init();
+		menu.init();
 	}
 };
