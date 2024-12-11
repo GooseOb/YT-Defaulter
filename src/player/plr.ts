@@ -53,7 +53,7 @@ export const plr = {
 		openItem(item: Readonly<YtSettingItem>) {
 			this.setOpen(true);
 			item.click();
-			return get.menuSubItems(item);
+			return get.menuSubItems(this.element);
 		},
 		settingItems: {
 			[SPEED]: null,
