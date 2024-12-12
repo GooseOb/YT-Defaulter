@@ -70,7 +70,11 @@ export const plr = {
 			name: YtSettingName,
 			finder: (item: Readonly<HTMLElement>) => boolean
 		) {
-			return findInNodeList(this.openItem(this.settingItems[name]), finder);
+			const prevItems = new Set(get.menuSubItems(this.element));
+			return findInNodeList(
+				this.openItem(this.settingItems[name]),
+				(item) => !prevItems.has(item) && finder(item)
+			);
 		},
 	},
 };
