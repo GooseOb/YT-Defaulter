@@ -8,6 +8,7 @@ import { value } from './value';
 import { getElCreator } from '../utils';
 import { plr } from '../player';
 import { controls } from './controls';
+import type { Cfg } from '../config';
 
 export const section = (
 	sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,

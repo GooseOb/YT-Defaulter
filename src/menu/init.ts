@@ -17,7 +17,7 @@ import * as get from '../element-getters';
 
 const controlCheckboxDiv = (
 	id: string,
-	flagName: FlagName,
+	flagName: config.FlagName,
 	textContent: string
 ): HTMLDivElement => {
 	const cont = div({ className: 'check-cont' });

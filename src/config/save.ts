@@ -1,3 +1,4 @@
+import type { ScriptCfg } from './types';
 import { update } from './update';
 import { value } from './value';
 

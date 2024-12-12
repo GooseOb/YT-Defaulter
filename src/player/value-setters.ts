@@ -1,8 +1,7 @@
 import * as config from '../config';
 import * as logger from '../logger';
 import { plr } from '../player';
-
-type YtSettingName = typeof SPEED | typeof QUALITY;
+import type { YtSettingName } from './types';
 
 type Comparator = (target: string, current: string) => boolean;
 const comparators: { readonly [P in YtSettingName]: Comparator } = {
@@ -16,7 +15,9 @@ const comparators: { readonly [P in YtSettingName]: Comparator } = {
 type ValueSetterHelpers = {
 	_ytSettingItem(settingName: YtSettingName, value: string): void;
 };
-type ValueSetters = { [P in Setting]: (value: Required<Cfg>[P]) => void };
+type ValueSetters = {
+	[P in config.Setting]: (value: Required<config.Cfg>[P]) => void;
+};
 
 export const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(settingName, value) {

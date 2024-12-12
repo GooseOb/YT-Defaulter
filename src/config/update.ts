@@ -1,3 +1,5 @@
+import type { ScriptCfg } from './types';
+
 /**
  *  @returns if the cfg was updated
  */

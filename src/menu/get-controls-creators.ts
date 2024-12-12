@@ -1,5 +1,7 @@
 import { checkbox, input, option, selectEl } from '../utils/element-creators';
 import { text } from '../text';
+import type { SettingControls } from './types';
+import type { Setting } from '../config';
 
 type GetControlCreator = <
 	TSetting extends Setting,

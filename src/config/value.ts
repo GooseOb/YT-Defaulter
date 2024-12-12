@@ -1,3 +1,5 @@
+import type { ScriptCfg } from './types';
+
 const cfgLocalStorage = localStorage[STORAGE_NAME];
 
 export const value: ScriptCfg = cfgLocalStorage

@@ -9,7 +9,7 @@ import { plr } from './player';
  * 3. Global custom speed
  * 4. Global speed
  */
-export const computeSettings = (doUseNormalSpeed: boolean): Cfg => {
+export const computeSettings = (doUseNormalSpeed: boolean): config.Cfg => {
 	const channel = config.channel.get();
 	const settings = {
 		...config.value.global,

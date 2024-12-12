@@ -1,5 +1,6 @@
 import * as get from '../element-getters';
 import { delay, until, restoreFocusAfter, findInNodeList } from '../utils';
+import type { YtSettingItem, YtSettingName } from './types';
 
 export const plr = {
 	async set(el: HTMLElement) {

@@ -1,3 +1,4 @@
+import type { Cfg, Setting } from '../config';
 import { restoreFocusAfter } from '../utils';
 import { plr } from './plr';
 import { valueSetters } from './value-setters';
