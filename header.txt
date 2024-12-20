@@ -5,6 +5,7 @@
 // @description  Set speed, quality, subtitles and volume as default globally or specialize for each channel
 // @author       GooseOb
 // @license      MIT
+// @grant        window.onurlchange
 // @match        https://www.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
 // ==/UserScript==

@@ -12,3 +12,10 @@ type DeepReadonlyObject<T> = {
 
 type Props<T extends HTMLElement> = Partial<T> & object;
 type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };
+type UrlChangeEvent = { url: string };
+interface Window {
+	onurlchange: (e: UrlChangeEvent) => void | null;
+}
+interface WindowEventMap {
+	urlchange: UrlChangeEvent;
+}
