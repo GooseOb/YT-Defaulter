@@ -37,5 +37,4 @@ export const fixPosition = () => {
 	const { y, height, width, left } = btn.getBoundingClientRect();
 	element.style.top = y + height + 8 + 'px';
 	element.style.left = left + width - menuWidth + 'px';
-	console.log(element.style.left);
 };
