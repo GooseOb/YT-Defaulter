@@ -3,10 +3,10 @@ export const debounce = <TParams extends any[]>(
 	delay: number
 ): ((...args: TParams) => void) => {
 	let timeout: number;
-	return function (...args) {
+	return (...args) => {
 		clearTimeout(timeout);
 		timeout = window.setTimeout(() => {
-			callback.apply(this, args);
+			callback(...args);
 		}, delay);
 	};
 };
