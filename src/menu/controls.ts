@@ -1,6 +1,7 @@
 import { text } from '../text';
 import type { SettingControls } from './types';
 import type { Cfg, FlagName, ScriptCfg } from '../config';
+import * as config from '../config';
 
 const updateValuesIn = (controls: SettingControls, cfgPart: Readonly<Cfg>) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
@@ -20,24 +21,27 @@ const channelControls = () =>
 		[SUBTITLES]: null as HTMLInputElement,
 	}) satisfies SettingControls;
 
-export const controls = {
+export const sections = {
 	global: channelControls(),
 	thisChannel: channelControls(),
-	flags: {
-		shortsToUsual: null as HTMLInputElement,
-		newTab: null as HTMLInputElement,
-		copySubs: null as HTMLInputElement,
-		standardMusicSpeed: null as HTMLInputElement,
-		enhancedBitrate: null as HTMLInputElement,
-	} satisfies Record<FlagName, HTMLInputElement>,
-	updateThisChannel(channelConfig: Cfg) {
-		updateValuesIn(this.thisChannel, channelConfig);
-	},
-	updateValues(cfg: ScriptCfg) {
-		updateValuesIn(this.global, cfg.global);
-		this.updateThisChannel();
-		for (const key in cfg.flags) {
-			this.flags[key as FlagName].checked = cfg.flags[key as FlagName];
-		}
-	},
+};
+
+export const flags = {
+	shortsToUsual: null as HTMLInputElement,
+	newTab: null as HTMLInputElement,
+	copySubs: null as HTMLInputElement,
+	standardMusicSpeed: null as HTMLInputElement,
+	enhancedBitrate: null as HTMLInputElement,
+} satisfies Record<FlagName, HTMLInputElement>;
+
+export const updateThisChannel = () => {
+	updateValuesIn(sections.thisChannel, config.channel.get());
+};
+
+export const updateValues = (cfg: ScriptCfg) => {
+	updateValuesIn(sections.global, cfg.global);
+	updateThisChannel();
+	for (const key in cfg.flags) {
+		flags[key as FlagName].checked = cfg.flags[key as FlagName];
+	}
 };

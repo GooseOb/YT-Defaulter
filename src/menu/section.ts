@@ -7,7 +7,7 @@ import { Hint } from '../hint';
 import { value } from './value';
 import { getElCreator } from '../utils';
 import { speedNormal } from '../player';
-import { controls } from './controls';
+import * as controls from './controls';
 import type { Cfg } from '../config';
 
 export const section = (
@@ -43,7 +43,7 @@ export const section = (
 			}
 			item.append(labelEl(id, { textContent: label }), elem);
 			// @ts-ignore
-			controls[sectionId][name] = elem;
+			controls.sections[sectionId][name] = elem;
 			return { item, elem };
 		}
 	);

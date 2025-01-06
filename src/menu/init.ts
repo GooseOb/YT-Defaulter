@@ -6,7 +6,7 @@ import {
 	div,
 	labelEl,
 } from '../utils/element-creators';
-import { controls } from './controls';
+import * as controls from './controls';
 import { section } from './section';
 import { settingsIcon } from './settings-icon';
 import * as config from '../config';

@@ -27,6 +27,6 @@ export const onVideoPage = async () => {
 		});
 
 	if (menu.value.element) {
-		menu.controls.updateThisChannel(config.channel.get());
+		menu.updateThisChannel(config.channel.get());
 	}
 };
