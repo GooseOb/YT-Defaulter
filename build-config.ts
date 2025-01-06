@@ -8,6 +8,7 @@ const pattern = /([A-Z_0-9]+):\s*('[^']+'|[^,;]+)/g;
 const consts = Bun.file('src/constants.ts');
 
 export const userscript: BuildConfigs['userscript'] = {
+	entry: 'src',
 	before: async ({ bun }) => {
 		bun.define = {};
 		const raw = await consts.text();
@@ -16,8 +17,6 @@ export const userscript: BuildConfigs['userscript'] = {
 			bun.define[tmp[1]] = tmp[2];
 		}
 	},
-	entry: 'src',
-	clearTerminal: true,
 	transform: (code) =>
 		code.replace(/\["([^"]+)"]:/g, '$1:').replace(/(\S)\["([^"]+)"]/g, '$1.$2'),
 };
