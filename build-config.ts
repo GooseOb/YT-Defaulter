@@ -1,16 +1,16 @@
-import { readFile } from 'node:fs/promises';
 import type { BuildConfigs } from 'bun-build-userscript';
-
-const pattern = /([A-Z_0-9]+):\s*('[^']+'|[^,;]+)/g;
 
 export const bun: BuildConfigs['bun'] = {
 	outdir: 'dist',
 };
 
+const pattern = /([A-Z_0-9]+):\s*('[^']+'|[^,;]+)/g;
+const consts = Bun.file('src/constants.ts');
+
 export const userscript: BuildConfigs['userscript'] = {
 	before: async ({ bun }) => {
 		bun.define = {};
-		const raw = await readFile('src/constants.ts', 'utf8');
+		const raw = await consts.text();
 		let tmp: RegExpExecArray | null;
 		while ((tmp = pattern.exec(raw))) {
 			bun.define[tmp[1]] = tmp[2];
