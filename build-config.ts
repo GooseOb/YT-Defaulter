@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { UserScriptConfig, type BuildConfigs } from 'bun-build-userscript';
+import type { BuildConfigs } from 'bun-build-userscript';
 
 const pattern = /([A-Z_0-9]+):\s*('[^']+'|[^,;]+)/g;
 
@@ -7,7 +7,7 @@ export const bun: BuildConfigs['bun'] = {
 	outdir: 'dist',
 };
 
-export const userscript = new UserScriptConfig({
+export const userscript: BuildConfigs['userscript'] = {
 	before: async ({ bun }) => {
 		bun.define = {};
 		const raw = await readFile('src/constants.ts', 'utf8');
@@ -17,6 +17,7 @@ export const userscript = new UserScriptConfig({
 		}
 	},
 	entry: 'src',
+	clearTerminal: true,
 	transform: (code) =>
 		code.replace(/\["([^"]+)"]:/g, '$1:').replace(/(\S)\["([^"]+)"]/g, '$1.$2'),
-});
+};
