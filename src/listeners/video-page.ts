@@ -21,12 +21,12 @@ export const onVideoPage = async () => {
 
 			applySettings(computeSettings(doNotChangeSpeed));
 
-			if (!menu.value.element) {
+			if (!menu.element) {
 				menu.init();
 			}
 		});
 
-	if (menu.value.element) {
-		menu.updateThisChannel(config.channel.get());
+	if (menu.element) {
+		menu.updateThisChannel();
 	}
 };

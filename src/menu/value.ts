@@ -1,52 +1,41 @@
-import { debounce, isDescendantOrTheSame } from '../utils';
+import { debounce } from '../utils';
+import { close, listenForClose } from './close';
+
+export const set = (el: HTMLDivElement, btnEl: HTMLButtonElement) => {
+	element = el;
+	btn = btnEl;
+};
+
+export let element = null as HTMLDivElement;
+export let btn = null as HTMLButtonElement;
+export let isOpen = false;
+
+let menuWidth = 0;
+export const adjustWidth = () => {
+	menuWidth = element.getBoundingClientRect().width;
+};
 
 type Focusable = { focus(): void };
+let firstFocusable = null as Focusable;
+export const setFirstFocusable = (el: Focusable) => {
+	firstFocusable = el;
+};
 
-export const value = {
-	element: null as HTMLDivElement,
-	btn: null as HTMLButtonElement,
-	isOpen: false,
-	width: 0,
-	_closeListener: {
-		onClick(e: Event) {
-			const el = e.target as HTMLElement;
-			if (!isDescendantOrTheSame(el, [value.element, value.btn]))
-				value.toggle();
-		},
-		onKeyUp(e: KeyboardEvent) {
-			if (e.code === 'Escape') {
-				value._setOpen(false);
-				value.btn.focus();
-			}
-		},
-		add() {
-			document.addEventListener('click', this.onClick);
-			document.addEventListener('keyup', this.onKeyUp);
-		},
-		remove() {
-			document.removeEventListener('click', this.onClick);
-			document.removeEventListener('keyup', this.onKeyUp);
-		},
-	},
-	firstFocusable: null as Focusable,
-	_setOpen(bool: boolean) {
-		if (bool) {
-			this.fixPosition();
-			this.element.style.visibility = 'visible';
-			this._closeListener.add();
-			this.firstFocusable.focus();
-		} else {
-			this.element.style.visibility = 'hidden';
-			this._closeListener.remove();
-		}
-		this.isOpen = bool;
-	},
-	toggle: debounce(function () {
-		this._setOpen(!this.isOpen);
-	}, 100),
-	fixPosition() {
-		const { y, height, width, left } = this.btn.getBoundingClientRect();
-		this.element.style.top = y + height + 8 + 'px';
-		this.element.style.left = left + width - this.width + 'px';
-	},
+export const toggle = debounce(() => {
+	isOpen = !isOpen;
+	if (isOpen) {
+		fixPosition();
+		element.style.visibility = 'visible';
+		listenForClose();
+		firstFocusable.focus();
+	} else {
+		close();
+	}
+}, 100);
+
+export const fixPosition = () => {
+	const { y, height, width, left } = btn.getBoundingClientRect();
+	element.style.top = y + height + 8 + 'px';
+	element.style.left = left + width - menuWidth + 'px';
+	console.log(element.style.left);
 };

@@ -4,7 +4,7 @@ import { withControlListeners, withHint } from '../utils/with';
 import { getControlCreators } from './get-controls-creators';
 import { validateVolume } from './validate-volume';
 import { Hint } from '../hint';
-import { value } from './value';
+import { setFirstFocusable } from './value';
 import { getElCreator } from '../utils';
 import { speedNormal } from '../player';
 import * as controls from './controls';
@@ -52,7 +52,7 @@ export const section = (
 		values: ['2', '1.75', '1.5', '1.25', speedNormal, '0.75', '0.5', '0.25'],
 		getText: (val) => val,
 	});
-	if (sectionId === SECTION_GLOBAL) value.firstFocusable = speedSelect.elem;
+	if (sectionId === SECTION_GLOBAL) setFirstFocusable(speedSelect.elem);
 
 	const sectionElement = div({ role: 'group' });
 	sectionElement.setAttribute('aria-labelledby', sectionId);

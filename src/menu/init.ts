@@ -11,7 +11,7 @@ import { section } from './section';
 import { settingsIcon } from './settings-icon';
 import * as config from '../config';
 import { withOnClick } from '../utils/with';
-import { value } from './value';
+import * as menu from './value';
 import { untilAppear } from '../utils';
 import * as get from '../element-getters';
 
@@ -72,24 +72,25 @@ export const init = () => {
 		})
 	);
 
-	value.btn = withOnClick(
-		button('', {
-			id: BTN_ID,
-			ariaLabel: text.OPEN_SETTINGS,
-			tabIndex: 0,
+	menu.set(
+		div({
+			id: MENU_ID,
 		}),
-		() => {
-			value.toggle();
-		}
+		withOnClick(
+			button('', {
+				id: BTN_ID,
+				ariaLabel: text.OPEN_SETTINGS,
+				tabIndex: 0,
+			}),
+			menu.toggle
+		)
 	);
-	value.btn.setAttribute('aria-controls', MENU_ID);
-	value.btn.classList.add(btnClass + '--icon-button');
-	value.btn.append(settingsIcon());
 
-	value.element = div({
-		id: MENU_ID,
-	});
-	value.element.append(
+	menu.btn.setAttribute('aria-controls', MENU_ID);
+	menu.btn.classList.add(btnClass + '--icon-button');
+	menu.btn.append(settingsIcon());
+
+	menu.element.append(
 		sections,
 		controlCheckboxDiv('shorts', 'shortsToUsual', text.SHORTS),
 		controlCheckboxDiv('new-tab', 'newTab', text.NEW_TAB),
@@ -107,20 +108,20 @@ export const init = () => {
 		controlDiv,
 		controlStatus
 	);
-	value.element.addEventListener('keyup', (e) => {
+	menu.element.addEventListener('keyup', (e) => {
 		const el = e.target as HTMLInputElement;
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
 	untilAppear(get.actionsBar).then((actionsBar) => {
-		actionsBar.insertBefore(value.btn, actionsBar.lastChild);
-		get.popupContainer().append(value.element);
-		value.width = value.element.getBoundingClientRect().width;
+		actionsBar.insertBefore(menu.btn, actionsBar.lastChild);
+		get.popupContainer().append(menu.element);
+		menu.adjustWidth();
 		sections.style.maxWidth = sections.offsetWidth + 'px';
 	});
 
 	const listener = () => {
-		if (value.isOpen) value.fixPosition();
+		if (menu.isOpen) menu.fixPosition();
 	};
 	window.addEventListener('scroll', listener);
 	window.addEventListener('resize', listener);
