@@ -12,21 +12,21 @@ export const onVideoPage = async () => {
 		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
 		'';
 
-	const plrSettingPromise = untilAppear(get.plr).then((elem) => plr.set(elem));
+	untilAppear(get.plr)
+		.then((elem) => plr.set(elem))
+		.then(() => {
+			const doNotChangeSpeed =
+				config.value.flags.standardMusicSpeed &&
+				!!get.artistChannelBadge(aboveTheFold);
 
-	plrSettingPromise.then(() => {
-		const doNotChangeSpeed =
-			config.value.flags.standardMusicSpeed &&
-			!!get.artistChannelBadge(aboveTheFold);
+			applySettings(computeSettings(doNotChangeSpeed));
 
-		applySettings(computeSettings(doNotChangeSpeed));
-	});
+			if (!menu.value.element) {
+				menu.init();
+			}
+		});
 
 	if (menu.value.element) {
 		menu.controls.updateThisChannel(config.channel.get());
-	} else {
-		plrSettingPromise.then(() => {
-			menu.init();
-		});
 	}
 };

@@ -36,7 +36,7 @@ const controlCheckboxDiv = (
 	return cont;
 };
 
-export const init = async () => {
+export const init = () => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
@@ -59,15 +59,16 @@ export const init = async () => {
 				updateControlStatus(text.EXPORT);
 			});
 		}),
-		withOnClick(button(text.IMPORT), async () => {
-			try {
-				config.save(await navigator.clipboard.readText());
-			} catch (e) {
-				updateControlStatus('Import: ' + e.message);
-				return;
-			}
-			updateControlStatus(text.IMPORT);
-			controls.updateValues(config.value);
+		withOnClick(button(text.IMPORT), () => {
+			navigator.clipboard
+				.readText()
+				.then((raw) => {
+					config.save(raw);
+					controls.updateValues(config.value);
+					return text.IMPORT;
+				})
+				.catch((e) => text.IMPORT + ': ' + e.message)
+				.then(updateControlStatus);
 		})
 	);
 
@@ -111,11 +112,12 @@ export const init = async () => {
 		if (e.code === 'Enter' && el.type === 'checkbox') el.checked = !el.checked;
 	});
 
-	const actionsBar = await untilAppear(get.actionsBar);
-	actionsBar.insertBefore(value.btn, actionsBar.lastChild);
-	get.popupContainer().append(value.element);
-	value.width = value.element.getBoundingClientRect().width;
-	sections.style.maxWidth = sections.offsetWidth + 'px';
+	untilAppear(get.actionsBar).then((actionsBar) => {
+		actionsBar.insertBefore(value.btn, actionsBar.lastChild);
+		get.popupContainer().append(value.element);
+		value.width = value.element.getBoundingClientRect().width;
+		sections.style.maxWidth = sections.offsetWidth + 'px';
+	});
 
 	const listener = () => {
 		if (value.isOpen) value.fixPosition();
