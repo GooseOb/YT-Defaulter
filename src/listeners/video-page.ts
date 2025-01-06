@@ -1,5 +1,5 @@
 import { untilAppear } from '../utils';
-import { applySettings, plr } from '../player';
+import { applySettings, setPlr } from '../player';
 import { computeSettings } from '../compute-settings';
 import * as get from '../element-getters';
 import * as config from '../config';
@@ -13,7 +13,7 @@ export const onVideoPage = async () => {
 		'';
 
 	untilAppear(get.plr)
-		.then((elem) => plr.set(elem))
+		.then(setPlr)
 		.then(() => {
 			const doNotChangeSpeed =
 				config.value.flags.standardMusicSpeed &&

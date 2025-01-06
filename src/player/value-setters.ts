@@ -1,6 +1,7 @@
 import * as config from '../config';
 import * as logger from '../logger';
-import { plr } from '../player';
+import * as plr from './plr';
+import * as menu from './menu';
 import type { YtSettingName } from './types';
 
 type Comparator = (target: string, current: string) => boolean;
@@ -21,19 +22,19 @@ type ValueSetters = {
 
 export const valueSetters: ValueSetters & ValueSetterHelpers = {
 	_ytSettingItem(settingName, value) {
-		const isOpen = plr.menu.isOpen();
+		const isOpen = menu.isOpen();
 		const compare = comparators[settingName];
-		const btn = plr.menu.findInItem(settingName, (btn) =>
+		const btn = menu.findInItem(settingName, (btn) =>
 			compare(value, btn.textContent)
 		);
 		if (btn) {
 			btn.click();
-			plr.menu.setOpen(isOpen);
+			menu.setOpen(isOpen);
 		}
 	},
 	speed(value) {
 		this._ytSettingItem(SPEED, plr.isSpeedApplied ? plr.speedNormal : value);
-		plr.isSpeedApplied = !plr.isSpeedApplied;
+		plr.toggleSpeed();
 	},
 	customSpeed(value) {
 		try {
@@ -42,7 +43,7 @@ export const valueSetters: ValueSetters & ValueSetterHelpers = {
 			logger.outOfRange('Custom speed');
 			return;
 		}
-		plr.isSpeedApplied = !plr.isSpeedApplied;
+		plr.toggleSpeed();
 	},
 	subtitles(value) {
 		if (plr.subtitlesBtn.ariaPressed !== value.toString())

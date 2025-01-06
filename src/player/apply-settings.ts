@@ -1,6 +1,6 @@
 import type { Cfg, Setting } from '../config';
 import { restoreFocusAfter } from '../utils';
-import { plr } from './plr';
+import { setOpen } from './menu';
 import { valueSetters } from './value-setters';
 
 export const applySettings = (settings: Cfg) => {
@@ -14,6 +14,6 @@ export const applySettings = (settings: Cfg) => {
 		for (const setting in settings) {
 			valueSetters[setting as Setting](settings[setting as never]);
 		}
-		plr.menu.setOpen(false);
+		setOpen(false);
 	});
 };

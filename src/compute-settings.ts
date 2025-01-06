@@ -1,5 +1,5 @@
 import * as config from './config';
-import { plr } from './player';
+import { speedNormal } from './player';
 
 /**
  * Priority of speed settings:
@@ -16,7 +16,7 @@ export const computeSettings = (doUseNormalSpeed: boolean): config.Cfg => {
 		...channel,
 	};
 	if (doUseNormalSpeed) {
-		settings.speed = plr.speedNormal;
+		settings.speed = speedNormal;
 		delete settings.customSpeed;
 	} else if ('customSpeed' in channel) {
 		delete settings.speed;

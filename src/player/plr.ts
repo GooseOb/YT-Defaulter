@@ -1,81 +1,43 @@
 import * as get from '../element-getters';
-import { delay, until, restoreFocusAfter, findInNodeList } from '../utils';
-import type { YtSettingItem, YtSettingName } from './types';
+import { delay, until, restoreFocusAfter } from '../utils';
+import type { YtSettingItem } from './types';
+import * as menu from './menu';
 
-export const plr = {
-	async set(el: HTMLElement) {
-		const getEl = get.plrGetters(el);
-		this.isSpeedApplied = false;
-		await delay(1_000);
-		await until(getEl.ad, (ad) => !ad, 200_000);
-		this.video ||= getEl.video();
-		this.subtitlesBtn ||= getEl.subtitlesBtn();
-		this.muteBtn ||= getEl.muteBtn();
+export const setPlr = async (el: HTMLElement) => {
+	const getEl = get.plrGetters(el);
+	isSpeedApplied = false;
+	await delay(1_000);
+	await until(getEl.ad, (ad) => !ad, 200_000);
+	video ||= getEl.video();
+	subtitlesBtn ||= getEl.subtitlesBtn();
+	muteBtn ||= getEl.muteBtn();
 
-		this.menu.element ||= getEl.menu.element();
-		this.menu._btn ||= getEl.menu.btn();
-		const clickBtn = () => {
-			this.menu._btn.click();
-		};
+	menu.set(getEl);
 
-		restoreFocusAfter(clickBtn);
-		await delay(50);
-		restoreFocusAfter(clickBtn);
+	restoreFocusAfter(menu.clickBtn);
+	await delay(50);
+	restoreFocusAfter(menu.clickBtn);
 
-		plr.menu.setSettingItems(
-			await until(
-				get.plrMenuItemsGetter<YtSettingItem>(plr.menu.element),
-				(arr) => !!arr.length
-			)
-		);
-		if (!this.speedNormal)
-			restoreFocusAfter(() => {
-				this.speedNormal = plr.menu.findInItem(
-					SPEED,
-					(btn) => !+btn.textContent
-				).textContent;
-			});
-	},
-	isSpeedApplied: false,
-	speedNormal: '',
-	element: null as HTMLElement,
-	video: null as HTMLVideoElement,
-	subtitlesBtn: null as HTMLButtonElement,
-	muteBtn: null as HTMLButtonElement,
-	menu: {
-		element: null as HTMLElement,
-		_btn: null as HTMLElement,
-		isOpen() {
-			return this.element.style.display !== 'none';
-		},
-		setOpen(bool: boolean) {
-			if (bool !== this.isOpen()) this._btn.click();
-		},
-		openItem(item: Readonly<YtSettingItem>) {
-			this.setOpen(true);
-			item.click();
-			return get.menuSubItems(this.element);
-		},
-		settingItems: {
-			[SPEED]: null,
-			[QUALITY]: null,
-		} as Record<YtSettingName, YtSettingItem | null>,
-		setSettingItems(items: DeepReadonly<NodeListOf<YtSettingItem>>) {
-			const findIcon = (d: string) =>
-				findInNodeList(items, (el) => !!el.querySelector(`path[d="${d}"]`));
-
-			this.settingItems[SPEED] = findIcon(SPEED_ICON_D);
-			this.settingItems[QUALITY] = findIcon(QUALITY_ICON_D);
-		},
-		findInItem(
-			name: YtSettingName,
-			finder: (item: Readonly<HTMLElement>) => boolean
-		) {
-			const prevItems = new Set(get.menuSubItems(this.element));
-			return findInNodeList(
-				this.openItem(this.settingItems[name]),
-				(item) => !prevItems.has(item) && finder(item)
-			);
-		},
-	},
+	menu.setSettingItems(
+		await until(
+			get.plrMenuItemsGetter<YtSettingItem>(menu.element),
+			(arr) => !!arr.length
+		)
+	);
+	if (!speedNormal)
+		restoreFocusAfter(() => {
+			speedNormal = menu.findInItem(
+				SPEED,
+				(btn) => !+btn.textContent
+			).textContent;
+		});
 };
+
+export let isSpeedApplied = false;
+export const toggleSpeed = () => {
+	isSpeedApplied = !isSpeedApplied;
+};
+export let speedNormal = '';
+export let video = null as HTMLVideoElement;
+export let subtitlesBtn = null as HTMLButtonElement;
+export let muteBtn = null as HTMLButtonElement;

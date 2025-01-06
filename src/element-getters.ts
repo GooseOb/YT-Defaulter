@@ -5,16 +5,25 @@ export const aboveTheFold = () => $('above-the-fold');
 export const actionsBar = () =>
 	$('actions')?.querySelector('ytd-menu-renderer');
 
-export const plrGetters = (plr: HTMLElement) => ({
-	ad: () => plr.querySelector('.ytp-ad-player-overlay'),
-	video: () => plr.querySelector('.html5-main-video'),
-	subtitlesBtn: () => plr.querySelector('.ytp-subtitles-button'),
-	muteBtn: () => plr.querySelector('.ytp-mute-button'),
-	menu: {
-		element: () => plr.querySelector('.ytp-settings-menu'),
-		btn: () => plr.querySelector('.ytp-settings-button'),
-	},
-});
+const getPlrGetter =
+	(plr: HTMLElement) =>
+	(selector: string) =>
+	<T extends Element>() =>
+		plr.querySelector<T>(selector);
+
+export const plrGetters = (plr: HTMLElement) => {
+	const get = getPlrGetter(plr);
+	return {
+		ad: get('.ytp-ad-player-overlay'),
+		video: get('.html5-main-video'),
+		subtitlesBtn: get('.ytp-subtitles-button'),
+		muteBtn: get('.ytp-mute-button'),
+		menu: {
+			element: get('.ytp-settings-menu'),
+			btn: get('.ytp-settings-button'),
+		},
+	};
+};
 
 export const plrMenuItemsGetter =
 	<T extends Element>(menu: HTMLElement) =>
@@ -22,7 +31,7 @@ export const plrMenuItemsGetter =
 		menu.querySelectorAll<T>('.ytp-menuitem[role="menuitem"]');
 
 export const menuSubItems = (item: HTMLElement) =>
-	item.querySelectorAll('.ytp-menuitem-label');
+	item.querySelectorAll<HTMLElement>('.ytp-menuitem-label');
 
 export const channelUsernameElementGetter = (aboveTheFold: HTMLElement) => () =>
 	aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a');

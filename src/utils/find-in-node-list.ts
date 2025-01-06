@@ -1,4 +1,4 @@
-export const findInNodeList = <T extends HTMLElement>(
+export const findInNodeList = <T extends Node>(
 	list: DeepReadonly<NodeListOf<T>>,
 	finder: (item: T) => boolean
 ) => {

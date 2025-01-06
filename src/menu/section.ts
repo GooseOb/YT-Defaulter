@@ -6,7 +6,7 @@ import { validateVolume } from './validate-volume';
 import { Hint } from '../hint';
 import { value } from './value';
 import { getElCreator } from '../utils';
-import { plr } from '../player';
+import { speedNormal } from '../player';
 import { controls } from './controls';
 import type { Cfg } from '../config';
 
@@ -49,16 +49,7 @@ export const section = (
 	);
 
 	const speedSelect = control.select(SPEED, text.SPEED, {
-		values: [
-			'2',
-			'1.75',
-			'1.5',
-			'1.25',
-			plr.speedNormal,
-			'0.75',
-			'0.5',
-			'0.25',
-		],
+		values: ['2', '1.75', '1.5', '1.25', speedNormal, '0.75', '0.5', '0.25'],
 		getText: (val) => val,
 	});
 	if (sectionId === SECTION_GLOBAL) value.firstFocusable = speedSelect.elem;
