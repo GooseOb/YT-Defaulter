@@ -40,7 +40,7 @@ export const init = () => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
 		section(SECTION_GLOBAL, text.GLOBAL, config.value.global),
-		section(SECTION_LOCAL, text.LOCAL, config.channel.get())
+		section(SECTION_LOCAL, text.LOCAL, config.channel())
 	);
 
 	const controlStatus = div();

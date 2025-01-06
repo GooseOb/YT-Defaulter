@@ -1,9 +1,6 @@
+import { ref } from '../utils/ref';
 import { value } from './value';
 
-export const channel = {
-	username: '',
-	get() {
-		value.channels[this.username] ||= {};
-		return value.channels[this.username];
-	},
-};
+export const username = ref('');
+
+export const channel = () => (value.channels[username.val] ||= {});

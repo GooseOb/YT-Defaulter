@@ -8,7 +8,7 @@ import * as menu from '../menu';
 export const onVideoPage = async () => {
 	const aboveTheFold = await untilAppear(get.aboveTheFold);
 
-	config.channel.username =
+	config.username.val =
 		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
 		'';
 

@@ -35,7 +35,7 @@ export const flags = {
 } satisfies Record<FlagName, HTMLInputElement>;
 
 export const updateThisChannel = () => {
-	updateValuesIn(sections.thisChannel, config.channel.get());
+	updateValuesIn(sections.thisChannel, config.channel());
 };
 
 export const updateValues = (cfg: ScriptCfg) => {

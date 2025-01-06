@@ -10,7 +10,7 @@ import { speedNormal } from './player';
  * 4. Global speed
  */
 export const computeSettings = (doUseNormalSpeed: boolean): config.Cfg => {
-	const channel = config.channel.get();
+	const channel = config.channel();
 	const settings = {
 		...config.value.global,
 		...channel,

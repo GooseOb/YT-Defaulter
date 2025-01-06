@@ -1,4 +1,5 @@
 import { debounce } from '../utils';
+import { ref } from '../utils/ref';
 import { close, listenForClose } from './close';
 
 export const set = (el: HTMLDivElement, btnEl: HTMLButtonElement) => {
@@ -16,10 +17,7 @@ export const adjustWidth = () => {
 };
 
 type Focusable = { focus(): void };
-let firstFocusable = null as Focusable;
-export const setFirstFocusable = (el: Focusable) => {
-	firstFocusable = el;
-};
+export const firstFocusable = ref<Focusable>(null);
 
 export const toggle = debounce(() => {
 	isOpen = !isOpen;
@@ -27,7 +25,7 @@ export const toggle = debounce(() => {
 		fixPosition();
 		element.style.visibility = 'visible';
 		listenForClose();
-		firstFocusable.focus();
+		firstFocusable.val.focus();
 	} else {
 		close();
 	}
