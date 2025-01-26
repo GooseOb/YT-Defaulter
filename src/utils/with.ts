@@ -6,7 +6,7 @@ export const withHint = <
 >(
 	hint: THint,
 	getItem: (hint: THint) => TItem
-) => [hint.element, getItem(hint).item];
+) => [getItem(hint).item, hint.element];
 
 export const withOnClick = <TElem extends HTMLElement>(
 	elem: TElem,
