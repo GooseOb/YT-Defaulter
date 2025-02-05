@@ -1,5 +1,5 @@
 export type FlagName =
-	| 'shortsToUsual'
+	| 'shortsToRegular'
 	| 'newTab'
 	| 'copySubs'
 	| 'standardMusicSpeed'

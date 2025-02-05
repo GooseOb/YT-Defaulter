@@ -9,7 +9,7 @@ export const value: ScriptCfg = cfgLocalStorage
 			global: {},
 			channels: {},
 			flags: {
-				shortsToUsual: false,
+				shortsToRegular: false,
 				newTab: false,
 				copySubs: false,
 				standardMusicSpeed: false,

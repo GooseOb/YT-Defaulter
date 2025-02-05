@@ -27,7 +27,7 @@ export const sections = {
 };
 
 export const flags = {
-	shortsToUsual: null as HTMLInputElement,
+	shortsToRegular: null as HTMLInputElement,
 	newTab: null as HTMLInputElement,
 	copySubs: null as HTMLInputElement,
 	standardMusicSpeed: null as HTMLInputElement,

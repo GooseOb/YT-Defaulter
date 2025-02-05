@@ -92,7 +92,7 @@ export const init = () => {
 
 	menu.element.append(
 		sections,
-		controlCheckboxDiv('shorts', 'shortsToUsual', text.SHORTS),
+		controlCheckboxDiv('shorts', 'shortsToRegular', text.SHORTS),
 		controlCheckboxDiv('new-tab', 'newTab', text.NEW_TAB),
 		controlCheckboxDiv('copy-subs', 'copySubs', text.COPY_SUBS),
 		controlCheckboxDiv(
