@@ -1,9 +1,4 @@
-export type FlagName =
-	| 'shortsToRegular'
-	| 'newTab'
-	| 'copySubs'
-	| 'standardMusicSpeed'
-	| 'enhancedBitrate';
+import type { FlagName } from '../menu';
 
 type YtCfg = {
 	speed?: string;

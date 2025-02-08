@@ -15,27 +15,6 @@ import * as menu from './value';
 import { untilAppear } from '../utils';
 import * as get from '../element-getters';
 
-const controlCheckboxDiv = (
-	id: string,
-	flagName: config.FlagName,
-	textContent: string
-): HTMLDivElement => {
-	const cont = div({ className: 'check-cont' });
-	id = PREFIX + id;
-	const elem = withOnClick(
-		checkbox({
-			id,
-			checked: config.value.flags[flagName],
-		}),
-		function (this: HTMLInputElement) {
-			config.value.flags[flagName] = this.checked;
-		}
-	);
-	controls.flags[flagName] = elem;
-	cont.append(labelEl(id, { textContent }), elem);
-	return cont;
-};
-
 export const init = () => {
 	const sections = div({ className: PREFIX + 'sections' });
 	sections.append(
@@ -92,18 +71,23 @@ export const init = () => {
 
 	menu.element.append(
 		sections,
-		controlCheckboxDiv('shorts', 'shortsToRegular', text.SHORTS),
-		controlCheckboxDiv('new-tab', 'newTab', text.NEW_TAB),
-		controlCheckboxDiv('copy-subs', 'copySubs', text.COPY_SUBS),
-		controlCheckboxDiv(
-			'standard-music-speed',
-			'standardMusicSpeed',
-			text.STANDARD_MUSIC_SPEED
-		),
-		controlCheckboxDiv(
-			'enhanced-bitrate',
-			'enhancedBitrate',
-			text.ENHANCED_BITRATE
+		...Object.entries(controls.flags).map(
+			([flagName, flag]: [controls.FlagName, controls.Flag]) => {
+				const cont = div({ className: 'check-cont' });
+				const id = PREFIX + flag.id;
+				const elem = withOnClick(
+					checkbox({
+						id,
+						checked: config.value.flags[flagName],
+					}),
+					function (this: HTMLInputElement) {
+						config.value.flags[flagName] = this.checked;
+					}
+				);
+				flag.elem = elem;
+				cont.append(labelEl(id, { textContent: flag.text }), elem);
+				return cont;
+			}
 		),
 		controlDiv,
 		controlStatus
