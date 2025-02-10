@@ -30,7 +30,7 @@ setInterval(() => {
 			(el) => el.textContent === 'Shorts'
 		)
 			?.closest('ytd-rich-section-renderer')
-			.remove();
+			?.remove();
 }, 1_000);
 
 updatePage();
