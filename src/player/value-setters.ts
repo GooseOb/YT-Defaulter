@@ -28,13 +28,11 @@ const setYT = (settingName: YtSettingName) => (value: string) => {
 
 export const valueSetters = {
 	speed: (value) => {
-		setYT(SPEED)(plr.isSpeedApplied ? plr.speedNormal : value);
-		plr.toggleSpeed();
+		setYT(SPEED)(plr.isSpeed(+value) ? plr.speedNormal : value);
 	},
 	customSpeed: (value) => {
 		try {
-			plr.video.playbackRate = plr.isSpeedApplied ? 1 : +value;
-			plr.toggleSpeed();
+			plr.video.playbackRate = plr.isSpeed(+value) ? 1 : +value;
 		} catch {
 			logger.outOfRange('Custom speed');
 		}

@@ -5,7 +5,6 @@ import * as menu from './menu';
 
 export const setPlr = async (el: HTMLElement) => {
 	const getEl = get.plrGetters(el);
-	isSpeedApplied = false;
 	await delay(1_000);
 	await until(getEl.ad, (ad) => !ad, 200_000);
 	video ||= getEl.video();
@@ -33,10 +32,7 @@ export const setPlr = async (el: HTMLElement) => {
 		});
 };
 
-export let isSpeedApplied = false;
-export const toggleSpeed = () => {
-	isSpeedApplied = !isSpeedApplied;
-};
+export const isSpeed = (value: number) => video.playbackRate !== value;
 export let speedNormal = '';
 export let video = null as HTMLVideoElement;
 export let subtitlesBtn = null as HTMLButtonElement;
