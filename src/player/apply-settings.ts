@@ -4,7 +4,7 @@ import { setOpen } from './menu';
 import { valueSetters } from './value-setters';
 
 export const applySettings = (settings: Cfg) => {
-	if (!isNaN(+settings.customSpeed)) {
+	if (!Number.isNaN(+settings.customSpeed)) {
 		valueSetters.customSpeed(settings.customSpeed);
 	}
 

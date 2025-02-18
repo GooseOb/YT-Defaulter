@@ -32,7 +32,7 @@ export const setPlr = async (el: HTMLElement) => {
 		});
 };
 
-export const isSpeed = (value: number) => video.playbackRate !== value;
+export const isSpeed = (value: number) => video.playbackRate === value;
 export let speedNormal = '';
 export let video = null as HTMLVideoElement;
 export let subtitlesBtn = null as HTMLButtonElement;

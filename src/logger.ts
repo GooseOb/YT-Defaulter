@@ -1,10 +1,10 @@
-export const log = (...msgs: string[]) => {
+export const log = (...msgs: any[]) => {
 	console.log('[YT-Defaulter]', ...msgs);
 };
-export const err = (...msgs: readonly string[]) => {
+export const err = (...msgs: readonly any[]) => {
 	console.error('[YT-Defaulter]', ...msgs);
 };
-export const outOfRange = (what: string) => {
+export const outOfRange = (what: any) => {
 	err(what, 'value is out of range');
 };
 export const trace = (msg: any, label?: string) => (

@@ -16,7 +16,7 @@ export const until = <T>(
 				res(item);
 			} else if (++i > reqLimit) {
 				clearInterval(interval);
-				rej(new Error("Timeout: item wasn't found"));
+				rej(new Error(`Timeout: item ${getItem.name} wasn't found`));
 			}
 		}, msReqTimeout);
 	});
