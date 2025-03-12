@@ -14,12 +14,12 @@ const comparators = {
 	[SPEED]: (target, current) => target === current,
 } satisfies { readonly [P in YtSettingName]: Comparator };
 
-const setYT = (settingName: YtSettingName) => (value: string) => {
+const setYT = (settingName: YtSettingName) => async (value: string) => {
 	const isOpen = menu.isOpen();
 	const compare = comparators[settingName];
-	const btn = menu.findInItem(settingName, (btn) =>
-		compare(value, btn.textContent)
-	);
+	const btn = await menu
+		.findInItem(settingName, (btn) => compare(value, btn.textContent))
+		.catch(() => null);
 	if (btn) {
 		btn.click();
 	}

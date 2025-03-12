@@ -1,5 +1,5 @@
 import * as get from '../element-getters';
-import { findInNodeList } from '../utils';
+import { findInNodeList, untilAppear } from '../utils';
 import type { YtSettingItem, YtSettingName } from './types';
 
 export const set = (getEl: ReturnType<typeof get.plrGetters>) => {
@@ -47,10 +47,11 @@ export const setSettingItems = (
 export const findInItem = (
 	name: YtSettingName,
 	finder: (item: Readonly<HTMLElement>) => boolean
-) => {
-	const prevItems = new Set(get.menuSubItems(element));
-	return findInNodeList(
-		openItem(settingItems[name]),
-		(item) => !prevItems.has(item) && finder(item)
+) =>
+	untilAppear(() => settingItems[name]).then((item) =>
+		findInNodeList(
+			openItem(item),
+			(subItem) =>
+				!new Set(get.menuSubItems(element)).has(subItem) && finder(subItem)
+		)
 	);
-};
