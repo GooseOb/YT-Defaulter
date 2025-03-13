@@ -44,14 +44,13 @@ export const setSettingItems = (
 	settingItems[QUALITY] = findIcon(QUALITY_ICON_D);
 };
 
-export const findInItem = (
-	name: YtSettingName,
-	finder: (item: Readonly<HTMLElement>) => boolean
-) =>
-	untilAppear(() => settingItems[name]).then((item) =>
-		findInNodeList(
-			openItem(item),
-			(subItem) =>
-				!new Set(get.menuSubItems(element)).has(subItem) && finder(subItem)
-		)
+export const findInItem = (name: YtSettingName) =>
+	untilAppear(() => settingItems[name]).then(
+		(item) => (predicate: (item: Readonly<HTMLElement>) => boolean) => {
+			const oldSubItems = new Set(get.menuSubItems(element));
+			return findInNodeList(
+				openItem(item),
+				(subItem) => !oldSubItems.has(subItem) && predicate(subItem)
+			);
+		}
 	);

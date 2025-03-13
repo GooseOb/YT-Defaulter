@@ -24,13 +24,11 @@ export const setPlr = async (el: HTMLElement) => {
 		)
 	);
 	if (!speedNormal)
-		menu
-			.findInItem(SPEED, (btn) => !+btn.textContent)
-			.then(({ textContent }) => {
-				restoreFocusAfter(() => {
-					speedNormal = textContent;
-				});
+		menu.findInItem(SPEED).then((findInSpeed) => {
+			restoreFocusAfter(() => {
+				speedNormal = findInSpeed((btn) => !+btn.textContent).textContent;
 			});
+		});
 };
 
 export const isSpeed = (value: number) => video.playbackRate === value;

@@ -17,9 +17,9 @@ const comparators = {
 const setYT = (settingName: YtSettingName) => async (value: string) => {
 	const isOpen = menu.isOpen();
 	const compare = comparators[settingName];
-	const btn = await menu
-		.findInItem(settingName, (btn) => compare(value, btn.textContent))
-		.catch(() => null);
+	const btn = (await menu.findInItem(settingName))((btn) =>
+		compare(value, btn.textContent)
+	);
 	if (btn) {
 		btn.click();
 	}
