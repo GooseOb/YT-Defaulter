@@ -1,8 +1,7 @@
 import * as config from './config';
 import { text, translations } from './text';
 import { style } from './style';
-import { onClick, onKeyup } from './listeners';
-import { onPageChange } from './listeners/page-change';
+import { onClick, onKeyup, onVideoPage } from './listeners';
 import { findInNodeList } from './utils';
 
 Object.assign(text, translations[document.documentElement.lang]);
@@ -11,19 +10,19 @@ if (config.update(config.value)) {
 	config.saveLS(config.value);
 }
 
-const updatePage = () => {
-	onPageChange(location.href);
-};
-
-if (window.onurlchange === null) {
-	window.addEventListener('urlchange', ({ url }) => {
-		onPageChange(url);
-	});
+declare global {
+	interface WindowEventMap {
+		'yt-navigate-finish': CustomEvent<{ pageType: string }>;
+	}
 }
 
-setInterval(() => {
-	if (window.onurlchange !== null) updatePage();
+window.addEventListener('yt-navigate-finish', ({ detail: { pageType } }) => {
+	if (pageType === 'watch' || pageType === 'live') {
+		setTimeout(onVideoPage, 1_000);
+	}
+});
 
+setInterval(() => {
 	if (config.value.flags.hideShorts)
 		findInNodeList(
 			document.querySelectorAll('#title'),
@@ -32,8 +31,6 @@ setInterval(() => {
 			?.closest('ytd-rich-section-renderer')
 			?.remove();
 }, 1_000);
-
-updatePage();
 
 document.addEventListener('click', onClick, { capture: true });
 document.addEventListener('keyup', onKeyup, { capture: true });
