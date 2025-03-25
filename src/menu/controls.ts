@@ -2,6 +2,7 @@ import { text } from '../text';
 import type { SettingControls } from './types';
 import type { Cfg, ScriptCfg } from '../config';
 import * as config from '../config';
+import * as logger from '../logger';
 
 const updateValuesIn = (controls: SettingControls, cfgPart: Readonly<Cfg>) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;
@@ -74,7 +75,13 @@ export const updateThisChannel = () => {
 export const updateValues = (cfg: ScriptCfg) => {
 	updateValuesIn(sections.global, cfg.global);
 	updateThisChannel();
+
 	for (const key in cfg.flags) {
-		flags[key as FlagName].elem.checked = cfg.flags[key as FlagName];
+		const flag = flags[key as FlagName];
+		if (flag) {
+			flag.elem.checked = cfg.flags[key as FlagName];
+		} else {
+			logger.err('Unknown flag:', key);
+		}
 	}
 };

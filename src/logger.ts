@@ -1,4 +1,4 @@
-export const log = (...msgs: any[]) => {
+export const log = (...msgs: readonly any[]) => {
 	console.log('[YT-Defaulter]', ...msgs);
 };
 export const err = (...msgs: readonly any[]) => {
