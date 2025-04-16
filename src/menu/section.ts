@@ -1,14 +1,14 @@
-import { checkbox, div, labelEl } from '../utils/element-creators';
+import type { Cfg } from '../config';
+import { Hint } from '../hint';
+import { speedNormal } from '../player';
 import { text } from '../text';
+import { getElCreator } from '../utils';
+import { checkbox, div, labelEl } from '../utils/element-creators';
 import { withControlListeners, withHint } from '../utils/with';
+import * as controls from './controls';
 import { getControlCreators } from './get-controls-creators';
 import { validateVolume } from './validate-volume';
-import { Hint } from '../hint';
 import { firstFocusable } from './value';
-import { getElCreator } from '../utils';
-import { speedNormal } from '../player';
-import * as controls from './controls';
-import type { Cfg } from '../config';
 
 export const section = (
 	sectionId: typeof SECTION_GLOBAL | typeof SECTION_LOCAL,

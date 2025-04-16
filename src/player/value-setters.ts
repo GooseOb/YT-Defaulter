@@ -1,14 +1,14 @@
 import * as config from '../config';
 import * as logger from '../logger';
-import * as plr from './plr';
 import * as menu from './menu';
+import * as plr from './plr';
 import type { YtSettingName } from './types';
 
 type Comparator = (target: string, current: string) => boolean;
 const comparators = {
 	// assuming the search is from the top
 	[QUALITY]: (target, current) =>
-		+target >= parseInt(current) &&
+		+target >= Number.parseInt(current) &&
 		(config.value.flags.enhancedBitrate ||
 			!current.toLowerCase().includes('premium')),
 	[SPEED]: (target, current) => target === current,

@@ -1,5 +1,5 @@
 import { isDescendantOrTheSame } from '../utils';
-import { element, btn } from './value';
+import { btn, element } from './value';
 
 export const close = () => {
 	element.style.visibility = 'hidden';

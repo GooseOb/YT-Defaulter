@@ -1,6 +1,6 @@
 type DeepReadonly<T> = T extends (infer R)[]
 	? DeepReadonlyArray<R>
-	: T extends Function
+	: T extends (...args: any[]) => any
 		? T
 		: T extends object
 			? DeepReadonlyObject<T>
@@ -14,7 +14,7 @@ type Props<T extends HTMLElement> = Partial<T> & object;
 type ControlItem<T extends HTMLElement> = { item: HTMLDivElement; elem: T };
 type UrlChangeEvent = { url: string };
 interface Window {
-	onurlchange: (e: UrlChangeEvent) => void | null;
+	onurlchange: (e: UrlChangeEvent) => undefined | null;
 }
 interface WindowEventMap {
 	urlchange: UrlChangeEvent;

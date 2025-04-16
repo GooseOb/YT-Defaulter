@@ -1,8 +1,8 @@
-import { text } from '../text';
-import type { SettingControls } from './types';
 import type { Cfg, ScriptCfg } from '../config';
 import * as config from '../config';
 import * as logger from '../logger';
+import { text } from '../text';
+import type { SettingControls } from './types';
 
 const updateValuesIn = (controls: SettingControls, cfgPart: Readonly<Cfg>) => {
 	controls[SPEED].value = cfgPart[SPEED] || text.DEFAULT;

@@ -1,24 +1,24 @@
 export const until = <T>(
 	getItem: () => T,
 	check: (item: T) => boolean,
-	msToWait = 10_000,
-	msReqTimeout = 20
+	timeout = 10_000,
+	interval = 20
 ) =>
 	new Promise<T>((res, rej) => {
-		const item = getItem();
+		let item = getItem();
 		if (check(item)) return res(item);
-		const reqLimit = msToWait / msReqTimeout;
+		const limit = timeout / interval;
 		let i = 0;
-		const interval = setInterval(() => {
-			const item = getItem();
+		const id = setInterval(() => {
+			item = getItem();
 			if (check(item)) {
-				clearInterval(interval);
+				clearInterval(id);
 				res(item);
-			} else if (++i > reqLimit) {
-				clearInterval(interval);
+			} else if (++i > limit) {
+				clearInterval(id);
 				rej(new Error(`Timeout: item ${getItem.name} wasn't found`));
 			}
-		}, msReqTimeout);
+		}, interval);
 	});
 
 export const untilAppear = <T>(getItem: () => T, msToWait?: number) =>

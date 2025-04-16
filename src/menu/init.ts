@@ -1,4 +1,7 @@
+import * as config from '../config';
+import * as get from '../element-getters';
 import { text } from '../text';
+import { untilAppear } from '../utils';
 import {
 	btnClass,
 	button,
@@ -6,14 +9,11 @@ import {
 	div,
 	labelEl,
 } from '../utils/element-creators';
+import { withOnClick } from '../utils/with';
 import * as controls from './controls';
 import { section } from './section';
 import { settingsIcon } from './settings-icon';
-import * as config from '../config';
-import { withOnClick } from '../utils/with';
 import * as menu from './value';
-import { untilAppear } from '../utils';
-import * as get from '../element-getters';
 
 export const init = () => {
 	const sections = div({ className: PREFIX + 'sections' });

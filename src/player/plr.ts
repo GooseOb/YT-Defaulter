@@ -1,7 +1,7 @@
 import * as get from '../element-getters';
-import { delay, until, restoreFocusAfter } from '../utils';
-import type { YtSettingItem } from './types';
+import { delay, restoreFocusAfter, until } from '../utils';
 import * as menu from './menu';
+import type { YtSettingItem } from './types';
 
 export const setPlr = async (el: HTMLElement) => {
 	const getEl = get.plrGetters(el);

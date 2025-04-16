@@ -1,7 +1,7 @@
 {
 	"name": "yt-defaulter",
 	"author": "GooseOb",
-	"version": "1.12.7",
+	"version": "1.12.8",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/GooseOb/YT-Defaulter.git"
@@ -13,12 +13,13 @@
 	"scripts": {
 		"dev": "build-userscript --cfg build-config.ts --watch",
 		"build": "build-userscript --cfg build-config.ts",
-		"app:version": "echo $npm_package_version"
+		"app:version": "echo $npm_package_version",
+		"check": "biome check --write"
 	},
 	"type": "module",
 	"devDependencies": {
-		"bun-build-userscript": "^2.1.4",
-		"husky": "^8.0.3",
-		"prettier": "^3.4.2"
+		"@biomejs/biome": "^1.9.4",
+		"bun-build-userscript": "^2.1.6",
+		"husky": "^9.1.7"
 	}
 }

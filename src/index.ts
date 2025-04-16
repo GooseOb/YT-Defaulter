@@ -1,7 +1,7 @@
 import * as config from './config';
-import { text, translations } from './text';
-import { style } from './style';
 import { onClick, onKeyup, onVideoPage } from './listeners';
+import { style } from './style';
+import { text, translations } from './text';
 import { findInNodeList } from './utils';
 
 Object.assign(text, translations[document.documentElement.lang]);
