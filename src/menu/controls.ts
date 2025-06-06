@@ -59,11 +59,6 @@ export const flags: Record<string, Flag> = {
 		id: 'enhanced-bitrate',
 		text: text.ENHANCED_BITRATE,
 	},
-	hideShorts: {
-		elem: null,
-		id: 'hide-shorts',
-		text: text.HIDE_SHORTS,
-	},
 };
 
 export type FlagName = keyof typeof flags;
