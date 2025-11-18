@@ -1,4 +1,5 @@
 import * as get from '../element-getters';
+import { trace } from '../logger';
 import { delay, restoreFocusAfter, until } from '../utils';
 import * as menu from './menu';
 import type { YtSettingItem } from './types';
@@ -26,7 +27,11 @@ export const setPlr = async (el: HTMLElement) => {
 	if (!speedNormal)
 		menu.findInItem(SPEED).then((findInSpeed) => {
 			restoreFocusAfter(() => {
-				speedNormal = findInSpeed((btn) => !+btn.textContent).textContent;
+				speedNormal = findInSpeed(
+					(btn) =>
+						!+btn.textContent &&
+						!btn.parentElement.querySelector('.ytp-speed-slider-menu-footer')
+				).textContent;
 			});
 		});
 };
