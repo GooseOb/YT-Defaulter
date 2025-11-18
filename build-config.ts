@@ -14,6 +14,7 @@ export const userscript: BuildConfigs['userscript'] = {
 		const raw = await consts.text();
 		let tmp: RegExpExecArray | null;
 		while ((tmp = pattern.exec(raw))) {
+			console.log(`Defining ${tmp[1]} = ${tmp[2]}`);
 			bun.define[tmp[1]] = tmp[2];
 		}
 	},

@@ -1,5 +1,6 @@
 import * as get from '../element-getters';
 import { findInNodeList, untilAppear } from '../utils';
+import * as ICON_DS from './icon-ds';
 import type { YtSettingItem, YtSettingName } from './types';
 
 export const set = (getEl: ReturnType<typeof get.plrGetters>) => {
@@ -15,9 +16,7 @@ export const clickBtn = () => {
 	btn.click();
 };
 
-export const isOpen = () => {
-	return element.style.display !== 'none';
-};
+export const isOpen = () => element.style.display !== 'none';
 
 export const setOpen = (bool: boolean) => {
 	if (bool !== isOpen()) btn.click();
@@ -37,11 +36,14 @@ export const settingItems = {
 export const setSettingItems = (
 	items: DeepReadonly<NodeListOf<YtSettingItem>>
 ) => {
-	const findIcon = (d: string) =>
-		findInNodeList(items, (el) => !!el.querySelector(`path[d="${d}"]`));
+	const findIcon = (ds: readonly string[]) =>
+		findInNodeList(
+			items,
+			(el) => !!el.querySelector(ds.map((d) => `path[d="${d}"]`).join(','))
+		);
 
-	settingItems[SPEED] = findIcon(SPEED_ICON_D);
-	settingItems[QUALITY] = findIcon(QUALITY_ICON_D);
+	settingItems[SPEED] = findIcon(ICON_DS.SPEED);
+	settingItems[QUALITY] = findIcon(ICON_DS.QUALITY);
 };
 
 export const findInItem = (name: YtSettingName) =>
