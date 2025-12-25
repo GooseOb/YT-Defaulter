@@ -1,6 +1,6 @@
 import * as get from '../element-getters';
 import { findInNodeList, untilAppear } from '../utils';
-import * as ICON_DS from './icon-ds';
+// import * as ICON_DS from './icon-ds';
 import type { YtSettingItem, YtSettingName } from './types';
 
 export const set = (getEl: ReturnType<typeof get.plrGetters>) => {
@@ -33,17 +33,9 @@ export const settingItems = {
 	[QUALITY]: null,
 } as Record<YtSettingName, YtSettingItem | null>;
 
-export const setSettingItems = (
-	items: DeepReadonly<NodeListOf<YtSettingItem>>
-) => {
-	const findIcon = (ds: readonly string[]) =>
-		findInNodeList(
-			items,
-			(el) => !!el.querySelector(ds.map((d) => `path[d="${d}"]`).join(','))
-		);
-
-	settingItems[SPEED] = findIcon(ICON_DS.SPEED);
-	settingItems[QUALITY] = findIcon(ICON_DS.QUALITY);
+export const setSettingItems = (menu: Element) => {
+	settingItems[SPEED] = get.speedIconItem(menu);
+	settingItems[QUALITY] = get.qualityIconItem(menu);
 };
 
 export const findInItem = (name: YtSettingName) =>

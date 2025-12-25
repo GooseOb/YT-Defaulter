@@ -18,12 +18,12 @@ export const setPlr = async (el: HTMLElement) => {
 	await delay(50);
 	restoreFocusAfter(menu.clickBtn);
 
-	menu.setSettingItems(
-		await until(
-			get.plrMenuItemsGetter<YtSettingItem>(menu.element),
-			(arr) => !!arr.length
-		)
+	await until(
+		get.plrMenuItemsGetter<YtSettingItem>(menu.element),
+		(arr) => !!arr.length
 	);
+	menu.setSettingItems(menu.element);
+
 	if (!speedNormal)
 		menu.findInItem(SPEED).then((findInSpeed) => {
 			restoreFocusAfter(() => {

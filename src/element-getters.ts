@@ -1,3 +1,4 @@
+import * as ICON_DS from './icon-ds';
 import { $ } from './utils';
 
 export const plr = () => $('movie_player');
@@ -6,7 +7,7 @@ export const actionsBar = () =>
 	$('actions')?.querySelector('ytd-menu-renderer');
 
 const getPlrGetter =
-	(plr: HTMLElement) =>
+	(plr: Element) =>
 	(selector: string) =>
 	<T extends Element>() =>
 		plr.querySelector<T>(selector);
@@ -25,10 +26,12 @@ export const plrGetters = (plr: HTMLElement) => {
 	};
 };
 
+const MENU_ITEM_SELECTOR = '.ytp-menuitem[role="menuitem"]';
+
 export const plrMenuItemsGetter =
-	<T extends Element>(menu: HTMLElement) =>
+	<T extends Element>(menu: Element) =>
 	() =>
-		menu.querySelectorAll<T>('.ytp-menuitem[role="menuitem"]');
+		menu.querySelectorAll<T>(MENU_ITEM_SELECTOR);
 
 export const menuSubItems = (item: HTMLElement) =>
 	item.querySelectorAll<HTMLElement>('.ytp-menuitem-label');
@@ -38,7 +41,7 @@ export const channelUsernameElementGetter = (aboveTheFold: HTMLElement) => () =>
 
 export const artistChannelBadge = (aboveTheFold: HTMLElement) =>
 	aboveTheFold.querySelector<HTMLAnchorElement>(
-		'.badge-style-type-verified-artist'
+		'.badge-style-type-verified-artist,.badge-shape-style-type-verified-artist'
 	);
 
 export const videoPlr = () => document.querySelector('.html5-video-player');
@@ -47,3 +50,13 @@ export const videoPlrCaptions = (plr: Element) =>
 
 export const popupContainer = () =>
 	document.querySelector('ytd-popup-container');
+
+const getIconItemFinder =
+	(ds: readonly string[]) =>
+	<T extends Element>(menu: Element) =>
+		menu.querySelector<T>(
+			ds.map((d) => `${MENU_ITEM_SELECTOR}:has(path[d="${d}"])`).join(',')
+		);
+
+export const speedIconItem = getIconItemFinder(ICON_DS.SPEED);
+export const qualityIconItem = getIconItemFinder(ICON_DS.QUALITY);
