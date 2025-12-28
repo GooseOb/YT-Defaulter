@@ -5,19 +5,21 @@ import * as menu from '../menu';
 import { applySettings, setPlr } from '../player';
 import { untilAppear } from '../utils';
 
-export const onVideoPage = async () => {
-	const aboveTheFold = await untilAppear(get.aboveTheFold);
-
-	config.username.val =
-		(await untilAppear(get.channelUsernameElementGetter(aboveTheFold))).href ||
-		'';
+export const onVideoPage = () => {
+	const usernameSettingPromise = untilAppear(get.aboveTheFold)
+		.then(get.channelUsernameElementGetter)
+		.then(untilAppear)
+		.then(({ href }) => {
+			config.username.val = href || '';
+		});
 
 	untilAppear(get.plr)
 		.then(setPlr)
+		.then(() => usernameSettingPromise)
 		.then(() => {
 			const doNotChangeSpeed =
 				config.value.flags.standardMusicSpeed &&
-				!!get.artistChannelBadge(aboveTheFold);
+				get.genre()?.content === 'Music';
 
 			applySettings(computeSettings(doNotChangeSpeed));
 

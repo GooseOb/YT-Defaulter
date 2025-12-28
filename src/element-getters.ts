@@ -44,6 +44,11 @@ export const artistChannelBadge = (aboveTheFold: HTMLElement) =>
 		'.badge-style-type-verified-artist,.badge-shape-style-type-verified-artist'
 	);
 
+export const genre = () =>
+	document.querySelector<Element & { content: string }>(
+		'meta[itemprop="genre"]'
+	);
+
 export const videoPlr = () => document.querySelector('.html5-video-player');
 export const videoPlrCaptions = (plr: Element) =>
 	plr.querySelectorAll('.captions-text > span');
