@@ -1,4 +1,5 @@
 import * as config from '../config';
+import * as get from '../element-getters';
 import * as logger from '../logger';
 import * as menu from './menu';
 import * as plr from './plr';
@@ -14,12 +15,19 @@ const comparators = {
 	[SPEED]: (target, current) => target === current,
 } satisfies { readonly [P in YtSettingName]: Comparator };
 
+const subItemsGetters = {
+	[QUALITY]: get.menuSubItems,
+	[SPEED]: get.speedItems,
+} satisfies {
+	readonly [P in YtSettingName]: (item: HTMLElement) => NodeListOf<HTMLElement>;
+};
+
 const setYT = (settingName: YtSettingName) => async (value: string) => {
 	const isOpen = menu.isOpen();
 	const compare = comparators[settingName];
-	const btn = (await menu.findInItem(settingName))((btn) =>
-		compare(value, btn.textContent)
-	);
+	const btn = (
+		await menu.findInItem(settingName, subItemsGetters[settingName])
+	)((btn) => compare(value, btn.textContent));
 	if (btn) {
 		btn.click();
 	}

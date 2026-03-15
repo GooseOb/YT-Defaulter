@@ -7,6 +7,6 @@ export const err = (...msgs: readonly any[]) => {
 export const outOfRange = (what: any) => {
 	err(what, 'value is out of range');
 };
-export const trace = (msg: any, label?: string) => (
+export const trace = <T>(msg: T, label?: string) => (
 	console.log(msg, label), msg
 );

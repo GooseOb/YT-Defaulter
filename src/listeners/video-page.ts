@@ -7,10 +7,10 @@ import { untilAppear } from '../utils';
 
 export const onVideoPage = () => {
 	const usernameSettingPromise = untilAppear(get.aboveTheFold)
-		.then(get.channelUsernameElementGetter)
+		.then(get.channelUsernameGetter)
 		.then(untilAppear)
-		.then(({ href }) => {
-			config.username.val = href || '';
+		.then((channelId) => {
+			config.username.val = channelId;
 		});
 
 	untilAppear(get.plr)

@@ -36,8 +36,22 @@ export const plrMenuItemsGetter =
 export const menuSubItems = (item: HTMLElement) =>
 	item.querySelectorAll<HTMLElement>('.ytp-menuitem-label');
 
-export const channelUsernameElementGetter = (aboveTheFold: HTMLElement) => () =>
-	aboveTheFold.querySelector<HTMLAnchorElement>('.ytd-channel-name > a');
+export const firstSpeedItem = (item: Element) =>
+	item.querySelector('.ytp-variable-speed-panel-preset-button');
+
+export const speedItems = (item: HTMLElement) =>
+	item.querySelectorAll<HTMLElement>('.ytp-variable-speed-panel-preset-button');
+
+export const channelUsernameGetter =
+	(aboveTheFold: HTMLElement) => (): string => {
+		const name = aboveTheFold.querySelector<HTMLAnchorElement>(
+			'.ytd-channel-name > a'
+		);
+		const collabFirstName = document.querySelector<HTMLAnchorElement>(
+			'#content.ytd-engagement-panel-section-list-renderer ytd-video-description-infocards-section-renderer a'
+		);
+		return name?.href || collabFirstName?.href.split('@')[1] || '';
+	};
 
 export const artistChannelBadge = (aboveTheFold: HTMLElement) =>
 	aboveTheFold.querySelector<HTMLAnchorElement>(

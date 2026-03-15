@@ -16,7 +16,11 @@ export const until = <T>(
 				res(item);
 			} else if (++i > limit) {
 				clearInterval(id);
-				rej(new Error(`Timeout: item ${getItem.name} wasn't found`));
+				rej(
+					new Error("Timeout: item wasn't found", {
+						cause: getItem,
+					})
+				);
 			}
 		}, interval);
 	});

@@ -1,6 +1,6 @@
 import * as get from '../element-getters';
+import { trace } from '../logger';
 import { findInNodeList, untilAppear } from '../utils';
-// import * as ICON_DS from './icon-ds';
 import type { YtSettingItem, YtSettingName } from './types';
 
 export const set = (getEl: ReturnType<typeof get.plrGetters>) => {
@@ -25,7 +25,6 @@ export const setOpen = (bool: boolean) => {
 export const openItem = (item: Readonly<YtSettingItem>) => {
 	setOpen(true);
 	item.click();
-	return get.menuSubItems(element);
 };
 
 export const settingItems = {
@@ -38,12 +37,21 @@ export const setSettingItems = (menu: Element) => {
 	settingItems[QUALITY] = get.qualityIconItem(menu);
 };
 
-export const findInItem = (name: YtSettingName) =>
+export const findNormalSpeed = () =>
+	untilAppear(() => settingItems[SPEED])
+		.then(openItem)
+		.then(() => get.firstSpeedItem(element).textContent);
+
+export const findInItem = (
+	name: YtSettingName,
+	getSubItems: (element: HTMLElement) => NodeListOf<HTMLElement>
+) =>
 	untilAppear(() => settingItems[name]).then(
 		(item) => (predicate: (item: Readonly<HTMLElement>) => boolean) => {
 			const oldSubItems = new Set(get.menuSubItems(element));
+			openItem(item);
 			return findInNodeList(
-				openItem(item),
+				getSubItems(item),
 				(subItem) => !oldSubItems.has(subItem) && predicate(subItem)
 			);
 		}

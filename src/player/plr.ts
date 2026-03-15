@@ -25,14 +25,8 @@ export const setPlr = async (el: HTMLElement) => {
 	menu.setSettingItems(menu.element);
 
 	if (!speedNormal)
-		menu.findInItem(SPEED).then((findInSpeed) => {
-			restoreFocusAfter(() => {
-				speedNormal = findInSpeed(
-					(btn) =>
-						!+btn.textContent &&
-						!btn.parentElement.querySelector('.ytp-speed-slider-menu-footer')
-				).textContent;
-			});
+		menu.findNormalSpeed().then((normal) => {
+			speedNormal = normal;
 		});
 };
 
