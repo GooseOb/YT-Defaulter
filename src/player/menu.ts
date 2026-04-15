@@ -51,7 +51,7 @@ export const findInItem = (
 			const oldSubItems = new Set(get.menuSubItems(element));
 			openItem(item);
 			return findInNodeList(
-				getSubItems(item),
+				getSubItems(element),
 				(subItem) => !oldSubItems.has(subItem) && predicate(subItem)
 			);
 		}

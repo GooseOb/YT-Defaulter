@@ -12,7 +12,7 @@ const comparators = {
 		+target >= Number.parseInt(current) &&
 		(config.value.flags.enhancedBitrate ||
 			!current.toLowerCase().includes('premium')),
-	[SPEED]: (target, current) => target === current,
+	[SPEED]: (target, current) => +target === +current,
 } satisfies { readonly [P in YtSettingName]: Comparator };
 
 const subItemsGetters = {
@@ -34,9 +34,11 @@ const setYT = (settingName: YtSettingName) => async (value: string) => {
 	menu.setOpen(isOpen);
 };
 
+const setYTSpeed = setYT(SPEED);
+
 export const valueSetters = {
 	speed: (value) => {
-		setYT(SPEED)(plr.isSpeed(+value) ? plr.speedNormal : value);
+		setYTSpeed(plr.isSpeed(+value) ? plr.speedNormal : value);
 	},
 	customSpeed: (value) => {
 		try {
