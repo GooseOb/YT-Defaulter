@@ -3,7 +3,7 @@ import * as get from '../element-getters';
 import { text } from '../text';
 import { untilAppear } from '../utils';
 import {
-	btnClass,
+	BTN_CLASS,
 	button,
 	checkbox,
 	div,
@@ -66,7 +66,7 @@ export const init = () => {
 	);
 
 	menu.btn.setAttribute('aria-controls', MENU_ID);
-	menu.btn.classList.add(btnClass + '--icon-button');
+	menu.btn.classList.add(BTN_CLASS + '--icon-button');
 	menu.btn.append(settingsIcon());
 
 	menu.element.append(

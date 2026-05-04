@@ -4,8 +4,9 @@ const m = '#' + MENU_ID,
 	d = ' div',
 	i = ' input',
 	s = ' select',
-	bg = 'var(--yt-spec-menu-background)',
-	underline = 'border-bottom: 2px solid var(--yt-spec-text-primary);';
+	bg = 'var(--yt-sys-color-baseline--menu-background)',
+	underline =
+		'border-bottom: 2px solid var(--yt-sys-color-baseline--text-primary);';
 
 export const style = getElCreator('style')({
 	textContent: `
@@ -13,7 +14,7 @@ export const style = getElCreator('style')({
 ${m} {
 display: flex;
 visibility: hidden;
-color: var(--yt-spec-text-primary);
+color: var(--yt-sys-color-baseline--text-primary);
 font-size: 14px;
 flex-direction: column;
 position: fixed;
@@ -21,7 +22,7 @@ background: ${bg};
 border-radius: 2rem;
 padding: 1rem;
 text-align: center;
-box-shadow: 0px 4px 32px 0px var(--yt-spec-static-overlay-background-light);
+box-shadow: 0px 4px 32px 0px var(--yt-sys-color-baseline--static-overlay-background-light);
 z-index: 2202
 }
 .control-cont > button {margin: .2rem}

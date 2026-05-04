@@ -17,8 +17,8 @@ export const labelEl = <T extends Props<HTMLLabelElement>>(
 	return elem;
 };
 export const selectEl = getElCreator('select');
-export const btnClass = 'yt-spec-button-shape-next';
-const btnClassFocused = btnClass + '--focused';
+export const BTN_CLASS = 'ytSpecButtonShapeNext';
+const BTN_CLASS_FOCUSED = BTN_CLASS + 'Focused';
 const _button = getElCreator('button');
 export const button = <T extends Props<HTMLButtonElement>>(
 	textContent: string,
@@ -27,15 +27,15 @@ export const button = <T extends Props<HTMLButtonElement>>(
 	withListeners(
 		_button({
 			textContent,
-			className: `${btnClass} ${btnClass}--tonal ${btnClass}--mono ${btnClass}--size-m`,
+			className: `${BTN_CLASS}Host ${BTN_CLASS} ${BTN_CLASS}Tonal ${BTN_CLASS}Mono ${BTN_CLASS}SizeM`,
 			...props,
 		}),
 		{
 			focus() {
-				this.classList.add(btnClassFocused);
+				this.classList.add(BTN_CLASS_FOCUSED);
 			},
 			blur() {
-				this.classList.remove(btnClassFocused);
+				this.classList.remove(BTN_CLASS_FOCUSED);
 			},
 		}
 	);

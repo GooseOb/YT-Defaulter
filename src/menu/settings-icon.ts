@@ -6,7 +6,7 @@ export const settingsIcon = () => {
 		['viewBox', '0 0 24 24'],
 		['width', '24'],
 		['height', '24'],
-		['fill', 'var(--yt-spec-text-primary)'],
+		['fill', 'var(--yt-sys-color-baseline--text-primary)'],
 	] as const) {
 		element.setAttribute(prop, value);
 	}
